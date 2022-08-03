@@ -3,12 +3,14 @@ use std::io::ErrorKind::{BrokenPipe, Interrupted, WouldBlock, WriteZero};
 use std::io::{self, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 
+#[allow(dead_code)]
 pub enum Response {
     None,
     Some(Vec<u8>),
     Pending(Vec<u8>),
 }
 
+#[allow(dead_code)]
 pub struct Connection {
     pub id: usize,
     pub socket: TcpStream,
@@ -35,6 +37,7 @@ impl Connection {
 
     /// Returns the complete message according to the protocol, even if needs
     /// multiple reads from the socket. @todo Should this be a trait? Probably.
+    #[allow(dead_code)]
     pub fn try_read_message(&mut self) -> Response {
         if let Some(mut received) = self.try_read() {
             // Loop because sometimes "received" could have more than one
