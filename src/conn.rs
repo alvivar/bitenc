@@ -82,13 +82,13 @@ impl Connection {
         Response::None
     }
 
-    pub fn try_write_message(&mut self, mut data: &[u8]) {
+    pub fn try_write_message(&mut self, data: &[u8]) {
         let mut vec = Vec::<u8>::new();
         let len = data.len() + 2;
 
         vec.push(((len & 0xFF00) >> 8) as u8);
         vec.push((len & 0x00FF) as u8);
-        vec.extend_from_slice(&mut data);
+        vec.extend_from_slice(data);
 
         self.try_write(vec);
     }
