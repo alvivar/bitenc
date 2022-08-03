@@ -25,8 +25,8 @@ fn main() {
 
         sleep(Duration::from_millis(100));
         let response = conn.try_read().unwrap();
-        println!("{:?}", response);
-        println!("{}", String::from_utf8_lossy(&response));
+        println!("\n{:?}", response);
+        println!("\n{}", String::from_utf8_lossy(&response));
     }
 }
 
