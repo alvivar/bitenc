@@ -2,7 +2,10 @@ mod conn;
 
 use crate::conn::Connection;
 
-use std::{net::TcpStream, thread::sleep, time::Duration};
+use std::io::{stdin, stdout, Write};
+use std::net::TcpStream;
+use std::thread::sleep;
+use std::time::Duration;
 
 fn main() {
     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
@@ -11,30 +14,20 @@ fn main() {
     let addr = server.local_addr().unwrap();
     let mut conn = Connection::new(0, server, addr);
 
-    conn.try_write_message(b"s set Set!");
-    conn.try_write_message(b"g set");
+    loop {
+        let mut input = String::new();
 
-    sleep(Duration::from_secs(1));
-    let response = conn.try_read().unwrap();
-    println!("{:?}\n", response);
-    println!("{}", String::from_utf8_lossy(&response));
-    sleep(Duration::from_secs(1));
+        print!("> ");
+        stdout().flush().unwrap();
+        stdin().read_line(&mut input).unwrap();
 
-    conn.try_write_message(b"#g sub");
-    conn.try_write_message(b"#j sub");
-    conn.try_write_message(b"#k sub");
-    conn.try_write_message(b"s sub Sub sent by set!");
-    conn.try_write_message(b"! sub Sub sent by !");
+        conn.try_write_message(input.trim().as_bytes());
 
-    conn.try_write_message(b"j");
-    conn.try_write_message(b"js");
-    conn.try_write_message(b"k");
-
-    sleep(Duration::from_secs(1));
-    let response = conn.try_read().unwrap();
-    println!("{:?}\n", response);
-    println!("{}", String::from_utf8_lossy(&response));
-    sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
+        let response = conn.try_read().unwrap();
+        println!("{:?}", response);
+        println!("{}", String::from_utf8_lossy(&response));
+    }
 }
 
 #[cfg(test)]
@@ -56,11 +49,11 @@ mod tests {
         conn.try_write_message(b"s set");
         conn.try_write_message(b"g set");
 
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
 
         assert_eq!(
             response,
@@ -82,11 +75,11 @@ mod tests {
         conn.try_write_message(b"s? maybe New maybe!");
         conn.try_write_message(b"g maybe");
 
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
 
         assert_eq!(
             response,
@@ -111,11 +104,11 @@ mod tests {
         conn.try_write_message(b"+1 inc");
         conn.try_write_message(b"g inc");
 
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
 
         assert_eq!(
             response,
@@ -141,11 +134,11 @@ mod tests {
         conn.try_write_message(b"s append Three");
         conn.try_write_message(b"+ append Four");
 
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
 
         assert_eq!(
             response,
@@ -189,11 +182,11 @@ mod tests {
         conn.try_write_message(b"g inc");
         conn.try_write_message(b"g append");
 
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
 
         assert_eq!(
             response,
@@ -224,11 +217,11 @@ mod tests {
         conn.try_write_message(b"s key_value.3.2 Three.Two");
         conn.try_write_message(b"k key_value");
 
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
 
         assert_eq!(
             response,
@@ -268,11 +261,11 @@ mod tests {
         conn.try_write_message(b"js json.user.name.last");
         conn.try_write_message(b"js json");
 
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_secs(1));
+        sleep(Duration::from_millis(100));
 
         assert_eq!(
             response,
@@ -329,63 +322,75 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn subscriptions() {
-    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-    //     server.set_nonblocking(true).unwrap();
+    #[test]
+    fn subscriptions() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
 
-    //     let addr = server.local_addr().unwrap();
-    //     let mut conn = Connection::new(0, server, addr);
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
 
-    //     // This test fails when key_value has more children than expected. We
-    //     // are assuming an empty database.
+        // This test fails when key_value has more children than expected. We
+        // are assuming an empty database.
 
-    //     conn.try_write_message(b"#g subs");
-    //     conn.try_write_message(b"#j subs");
-    //     conn.try_write_message(b"#k subs");
+        conn.try_write_message(b"#g subs");
+        conn.try_write_message(b"#j subs");
+        conn.try_write_message(b"#k subs");
 
-    //     conn.try_write_message(b"s subs.user User");
-    //     conn.try_write_message(b"s subs.city City");
-    //     conn.try_write_message(b"s subs.age Age");
-    //     conn.try_write_message(b"s subs.user.id User.ID");
-    //     conn.try_write_message(b"s subs.user.name User.Name");
-    //     conn.try_write_message(b"s subs.user.name.first User.Name.First");
-    //     conn.try_write_message(b"s subs.user.name.last User.Name.Last");
+        conn.try_write_message(b"s subs.user User");
+        conn.try_write_message(b"d subs.city");
+        conn.try_write_message(b"+ subs.city City");
+        conn.try_write_message(b"d subs.age");
+        conn.try_write_message(b"+1 subs.age Age");
+        conn.try_write_message(b"d subs.user.id");
+        conn.try_write_message(b"+1 subs.user.id User.ID");
+        conn.try_write_message(b"! subs.user.name User.Name");
+        conn.try_write_message(b"! subs.user.name.first User.Name.First");
+        conn.try_write_message(b"! subs.user.name.last User.Name.Last");
 
-    //     sleep(Duration::from_secs(1));
-    //     let response = conn.try_read().unwrap();
-    //     println!("{:?}\n", response);
-    //     println!("{}", String::from_utf8_lossy(&response));
-    //     sleep(Duration::from_secs(1));
+        conn.try_write_message(b"#- subs");
 
-    //     assert_eq!(
-    //         response,
-    //         &[
-    //             79, 75, 10, 79, 75, 10, 79, 75, 10, 79, 75, 10, 79, 75, 10, 79, 75, 10, 79, 75, 10,
-    //             91, 55, 57, 44, 49, 49, 48, 44, 49, 48, 49, 93, 10, 91, 56, 52, 44, 49, 48, 52, 44,
-    //             49, 49, 52, 44, 49, 48, 49, 44, 49, 48, 49, 44, 52, 54, 44, 56, 52, 44, 49, 49, 57,
-    //             44, 49, 49, 49, 44, 52, 54, 44, 55, 57, 44, 49, 49, 48, 44, 49, 48, 49, 93, 10,
-    //             123, 34, 49, 34, 58, 91, 55, 57, 44, 49, 49, 48, 44, 49, 48, 49, 93, 44, 34, 50,
-    //             34, 58, 91, 56, 52, 44, 49, 49, 57, 44, 49, 49, 49, 93, 44, 34, 51, 34, 58, 123,
-    //             34, 49, 34, 58, 91, 56, 52, 44, 49, 48, 52, 44, 49, 49, 52, 44, 49, 48, 49, 44, 49,
-    //             48, 49, 44, 52, 54, 44, 55, 57, 44, 49, 49, 48, 44, 49, 48, 49, 93, 44, 34, 50, 34,
-    //             58, 123, 34, 49, 34, 58, 91, 56, 52, 44, 49, 48, 52, 44, 49, 49, 52, 44, 49, 48,
-    //             49, 44, 49, 48, 49, 44, 52, 54, 44, 56, 52, 44, 49, 49, 57, 44, 49, 49, 49, 44, 52,
-    //             54, 44, 55, 57, 44, 49, 49, 48, 44, 49, 48, 49, 93, 125, 125, 125, 10, 123, 34,
-    //             106, 115, 111, 110, 34, 58, 123, 34, 49, 34, 58, 91, 55, 57, 44, 49, 49, 48, 44,
-    //             49, 48, 49, 93, 125, 125, 10, 123, 34, 106, 115, 111, 110, 34, 58, 123, 34, 51, 34,
-    //             58, 123, 34, 50, 34, 58, 123, 34, 49, 34, 58, 91, 56, 52, 44, 49, 48, 52, 44, 49,
-    //             49, 52, 44, 49, 48, 49, 44, 49, 48, 49, 44, 52, 54, 44, 56, 52, 44, 49, 49, 57, 44,
-    //             49, 49, 49, 44, 52, 54, 44, 55, 57, 44, 49, 49, 48, 44, 49, 48, 49, 93, 125, 125,
-    //             125, 125, 10, 123, 34, 106, 115, 111, 110, 34, 58, 123, 34, 49, 34, 58, 91, 55, 57,
-    //             44, 49, 49, 48, 44, 49, 48, 49, 93, 44, 34, 50, 34, 58, 91, 56, 52, 44, 49, 49, 57,
-    //             44, 49, 49, 49, 93, 44, 34, 51, 34, 58, 123, 34, 49, 34, 58, 91, 56, 52, 44, 49,
-    //             48, 52, 44, 49, 49, 52, 44, 49, 48, 49, 44, 49, 48, 49, 44, 52, 54, 44, 55, 57, 44,
-    //             49, 49, 48, 44, 49, 48, 49, 93, 44, 34, 50, 34, 58, 123, 34, 49, 34, 58, 91, 56,
-    //             52, 44, 49, 48, 52, 44, 49, 49, 52, 44, 49, 48, 49, 44, 49, 48, 49, 44, 52, 54, 44,
-    //             56, 52, 44, 49, 49, 57, 44, 49, 49, 49, 44, 52, 54, 44, 55, 57, 44, 49, 49, 48, 44,
-    //             49, 48, 49, 93, 125, 125, 125, 125, 10
-    //         ]
-    //     );
-    // }
+        conn.try_write_message(b"s subs.user User");
+        conn.try_write_message(b"d subs.city");
+        conn.try_write_message(b"+ subs.city City");
+        conn.try_write_message(b"d subs.age");
+        conn.try_write_message(b"+1 subs.age Age");
+
+        sleep(Duration::from_millis(100));
+        let response = conn.try_read().unwrap();
+        println!("{:?}\n", response);
+        println!("{}", String::from_utf8_lossy(&response));
+        sleep(Duration::from_millis(100));
+
+        assert_eq!(
+            response,
+            &[
+                79, 75, 10, 79, 75, 10, 79, 75, 10, 79, 75, 10, 85, 115, 101, 114, 10, 123, 34,
+                117, 115, 101, 114, 34, 58, 34, 85, 115, 101, 114, 34, 125, 10, 117, 115, 101, 114,
+                32, 85, 115, 101, 114, 10, 79, 75, 10, 67, 105, 116, 121, 10, 67, 105, 116, 121,
+                10, 123, 34, 99, 105, 116, 121, 34, 58, 34, 67, 105, 116, 121, 34, 125, 10, 99,
+                105, 116, 121, 32, 67, 105, 116, 121, 10, 79, 75, 10, 0, 0, 0, 0, 0, 0, 0, 0, 10,
+                0, 0, 0, 0, 0, 0, 0, 0, 10, 123, 34, 97, 103, 101, 34, 58, 34, 92, 117, 48, 48, 48,
+                48, 92, 117, 48, 48, 48, 48, 92, 117, 48, 48, 48, 48, 92, 117, 48, 48, 48, 48, 92,
+                117, 48, 48, 48, 48, 92, 117, 48, 48, 48, 48, 92, 117, 48, 48, 48, 48, 92, 117, 48,
+                48, 48, 48, 34, 125, 10, 97, 103, 101, 32, 0, 0, 0, 0, 0, 0, 0, 0, 10, 79, 75, 10,
+                0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 0, 0, 0, 0, 0, 0, 0, 10, 123, 34, 105, 100, 34, 58,
+                34, 92, 117, 48, 48, 48, 48, 92, 117, 48, 48, 48, 48, 92, 117, 48, 48, 48, 48, 92,
+                117, 48, 48, 48, 48, 92, 117, 48, 48, 48, 48, 92, 117, 48, 48, 48, 48, 92, 117, 48,
+                48, 48, 48, 92, 117, 48, 48, 48, 48, 34, 125, 10, 105, 100, 32, 0, 0, 0, 0, 0, 0,
+                0, 0, 10, 79, 75, 10, 85, 115, 101, 114, 46, 78, 97, 109, 101, 10, 123, 34, 110,
+                97, 109, 101, 34, 58, 34, 85, 115, 101, 114, 46, 78, 97, 109, 101, 34, 125, 10,
+                110, 97, 109, 101, 32, 85, 115, 101, 114, 46, 78, 97, 109, 101, 10, 79, 75, 10, 85,
+                115, 101, 114, 46, 78, 97, 109, 101, 46, 70, 105, 114, 115, 116, 10, 123, 34, 102,
+                105, 114, 115, 116, 34, 58, 34, 85, 115, 101, 114, 46, 78, 97, 109, 101, 46, 70,
+                105, 114, 115, 116, 34, 125, 10, 102, 105, 114, 115, 116, 32, 85, 115, 101, 114,
+                46, 78, 97, 109, 101, 46, 70, 105, 114, 115, 116, 10, 79, 75, 10, 85, 115, 101,
+                114, 46, 78, 97, 109, 101, 46, 76, 97, 115, 116, 10, 123, 34, 108, 97, 115, 116,
+                34, 58, 34, 85, 115, 101, 114, 46, 78, 97, 109, 101, 46, 76, 97, 115, 116, 34, 125,
+                10, 108, 97, 115, 116, 32, 85, 115, 101, 114, 46, 78, 97, 109, 101, 46, 76, 97,
+                115, 116, 10, 79, 75, 10, 79, 75, 10, 79, 75, 10, 67, 105, 116, 121, 10, 79, 75,
+                10, 0, 0, 0, 0, 0, 0, 0, 0, 10
+            ]
+        );
+    }
 }
