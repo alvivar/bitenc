@@ -23,7 +23,7 @@ fn main() {
 
         conn.try_write_message(input.trim().as_bytes());
 
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
         let response = conn.try_read().unwrap();
         println!("\n{:?}", response);
         println!("\n{}", String::from_utf8_lossy(&response));
@@ -49,11 +49,11 @@ mod tests {
         conn.try_write_message(b"s set");
         conn.try_write_message(b"g set");
 
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
 
         assert_eq!(
             response,
@@ -75,11 +75,11 @@ mod tests {
         conn.try_write_message(b"s? maybe New maybe!");
         conn.try_write_message(b"g maybe");
 
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
 
         assert_eq!(
             response,
@@ -104,11 +104,11 @@ mod tests {
         conn.try_write_message(b"+1 inc");
         conn.try_write_message(b"g inc");
 
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
 
         assert_eq!(
             response,
@@ -134,11 +134,11 @@ mod tests {
         conn.try_write_message(b"s append Three");
         conn.try_write_message(b"+ append Four");
 
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
 
         assert_eq!(
             response,
@@ -182,11 +182,11 @@ mod tests {
         conn.try_write_message(b"g inc");
         conn.try_write_message(b"g append");
 
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
 
         assert_eq!(
             response,
@@ -217,11 +217,11 @@ mod tests {
         conn.try_write_message(b"s key_value.3.2 Three.Two");
         conn.try_write_message(b"k key_value");
 
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
 
         assert_eq!(
             response,
@@ -261,11 +261,11 @@ mod tests {
         conn.try_write_message(b"js json.user.name.last");
         conn.try_write_message(b"js json");
 
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
 
         assert_eq!(
             response,
@@ -356,11 +356,11 @@ mod tests {
         conn.try_write_message(b"d subs.age");
         conn.try_write_message(b"+1 subs.age Age");
 
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
         let response = conn.try_read().unwrap();
         println!("{:?}\n", response);
         println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(100));
+        sleep(Duration::from_millis(250));
 
         assert_eq!(
             response,
