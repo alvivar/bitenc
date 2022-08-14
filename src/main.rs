@@ -21,7 +21,9 @@ fn main() {
         stdout().flush().unwrap();
         stdin().read_line(&mut input).unwrap();
 
-        conn.try_write_message(input.trim().as_bytes());
+        let message = input.trim().as_bytes().to_vec();
+        println!("> {:?}", message);
+        conn.try_write_message(message).unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -45,7 +47,7 @@ mod tests {
         let mut conn = Connection::new(0, server, addr);
 
         for _ in 0..10 {
-            conn.try_write_message(b"");
+            conn.try_write_message(b"".to_vec()).unwrap();
         }
 
         sleep(Duration::from_millis(200));
@@ -65,10 +67,10 @@ mod tests {
         let addr = server.local_addr().unwrap();
         let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"s set Set!");
-        conn.try_write_message(b"g set");
-        conn.try_write_message(b"s set");
-        conn.try_write_message(b"g set");
+        conn.try_write_message(b"s set Set!".to_vec()).unwrap();
+        conn.try_write_message(b"g set".to_vec()).unwrap();
+        conn.try_write_message(b"s set".to_vec()).unwrap();
+        conn.try_write_message(b"g set".to_vec()).unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -90,11 +92,12 @@ mod tests {
         let addr = server.local_addr().unwrap();
         let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"d maybe");
-        conn.try_write_message(b"s? maybe Maybe!");
-        conn.try_write_message(b"g maybe");
-        conn.try_write_message(b"s? maybe New maybe!");
-        conn.try_write_message(b"g maybe");
+        conn.try_write_message(b"d maybe".to_vec()).unwrap();
+        conn.try_write_message(b"s? maybe Maybe!".to_vec()).unwrap();
+        conn.try_write_message(b"g maybe".to_vec()).unwrap();
+        conn.try_write_message(b"s? maybe New maybe!".to_vec())
+            .unwrap();
+        conn.try_write_message(b"g maybe".to_vec()).unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -119,11 +122,11 @@ mod tests {
         let addr = server.local_addr().unwrap();
         let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"d inc");
-        conn.try_write_message(b"+1 inc");
-        conn.try_write_message(b"g inc");
-        conn.try_write_message(b"+1 inc");
-        conn.try_write_message(b"g inc");
+        conn.try_write_message(b"d inc".to_vec()).unwrap();
+        conn.try_write_message(b"+1 inc".to_vec()).unwrap();
+        conn.try_write_message(b"g inc".to_vec()).unwrap();
+        conn.try_write_message(b"+1 inc".to_vec()).unwrap();
+        conn.try_write_message(b"g inc".to_vec()).unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -148,12 +151,12 @@ mod tests {
         let addr = server.local_addr().unwrap();
         let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"d append Half");
-        conn.try_write_message(b"+ append One");
-        conn.try_write_message(b"+ append Two");
+        conn.try_write_message(b"d append Half".to_vec()).unwrap();
+        conn.try_write_message(b"+ append One".to_vec()).unwrap();
+        conn.try_write_message(b"+ append Two".to_vec()).unwrap();
 
-        conn.try_write_message(b"s append Three");
-        conn.try_write_message(b"+ append Four");
+        conn.try_write_message(b"s append Three".to_vec()).unwrap();
+        conn.try_write_message(b"+ append Four".to_vec()).unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -178,30 +181,31 @@ mod tests {
         let addr = server.local_addr().unwrap();
         let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"d set");
-        conn.try_write_message(b"d maybe");
-        conn.try_write_message(b"d inc");
-        conn.try_write_message(b"d append");
+        conn.try_write_message(b"d set".to_vec()).unwrap();
+        conn.try_write_message(b"d maybe".to_vec()).unwrap();
+        conn.try_write_message(b"d inc".to_vec()).unwrap();
+        conn.try_write_message(b"d append".to_vec()).unwrap();
 
-        conn.try_write_message(b"s set Set!");
-        conn.try_write_message(b"s? maybe Maybe!");
-        conn.try_write_message(b"+1 inc");
-        conn.try_write_message(b"+ append Append!");
+        conn.try_write_message(b"s set Set!".to_vec()).unwrap();
+        conn.try_write_message(b"s? maybe Maybe!".to_vec()).unwrap();
+        conn.try_write_message(b"+1 inc".to_vec()).unwrap();
+        conn.try_write_message(b"+ append Append!".to_vec())
+            .unwrap();
 
-        conn.try_write_message(b"g set");
-        conn.try_write_message(b"g maybe");
-        conn.try_write_message(b"g inc");
-        conn.try_write_message(b"g append");
+        conn.try_write_message(b"g set".to_vec()).unwrap();
+        conn.try_write_message(b"g maybe".to_vec()).unwrap();
+        conn.try_write_message(b"g inc".to_vec()).unwrap();
+        conn.try_write_message(b"g append".to_vec()).unwrap();
 
-        conn.try_write_message(b"d set");
-        conn.try_write_message(b"d maybe");
-        conn.try_write_message(b"d inc");
-        conn.try_write_message(b"d append");
+        conn.try_write_message(b"d set".to_vec()).unwrap();
+        conn.try_write_message(b"d maybe".to_vec()).unwrap();
+        conn.try_write_message(b"d inc".to_vec()).unwrap();
+        conn.try_write_message(b"d append".to_vec()).unwrap();
 
-        conn.try_write_message(b"g set");
-        conn.try_write_message(b"g maybe");
-        conn.try_write_message(b"g inc");
-        conn.try_write_message(b"g append");
+        conn.try_write_message(b"g set".to_vec()).unwrap();
+        conn.try_write_message(b"g maybe".to_vec()).unwrap();
+        conn.try_write_message(b"g inc".to_vec()).unwrap();
+        conn.try_write_message(b"g append".to_vec()).unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -231,12 +235,17 @@ mod tests {
         // This test fails when key_value has more children than expected. We
         // are assuming an empty database.
 
-        conn.try_write_message(b"s key_value.1 One");
-        conn.try_write_message(b"s key_value.2 Two");
-        conn.try_write_message(b"s key_value.3 Three");
-        conn.try_write_message(b"s key_value.3.1 Three.One");
-        conn.try_write_message(b"s key_value.3.2 Three.Two");
-        conn.try_write_message(b"k key_value");
+        conn.try_write_message(b"s key_value.1 One".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s key_value.2 Two".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s key_value.3 Three".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s key_value.3.1 Three.One".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s key_value.3.2 Three.Two".to_vec())
+            .unwrap();
+        conn.try_write_message(b"k key_value".to_vec()).unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -266,21 +275,29 @@ mod tests {
         // This test fails when key_value has more children than expected. We
         // are assuming an empty database.
 
-        conn.try_write_message(b"s json.user User");
-        conn.try_write_message(b"s json.city City");
-        conn.try_write_message(b"s json.age Age");
-        conn.try_write_message(b"s json.user.id User.ID");
-        conn.try_write_message(b"s json.user.name User.Name");
-        conn.try_write_message(b"s json.user.name.first User.Name.First");
-        conn.try_write_message(b"s json.user.name.last User.Name.Last");
+        conn.try_write_message(b"s json.user User".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s json.city City".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s json.age Age".to_vec()).unwrap();
+        conn.try_write_message(b"s json.user.id User.ID".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s json.user.name User.Name".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s json.user.name.first User.Name.First".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s json.user.name.last User.Name.Last".to_vec())
+            .unwrap();
 
-        conn.try_write_message(b"j json.user");
-        conn.try_write_message(b"j json.user.name.last");
-        conn.try_write_message(b"j json");
+        conn.try_write_message(b"j json.user".to_vec()).unwrap();
+        conn.try_write_message(b"j json.user.name.last".to_vec())
+            .unwrap();
+        conn.try_write_message(b"j json".to_vec()).unwrap();
 
-        conn.try_write_message(b"js json.user");
-        conn.try_write_message(b"js json.user.name.last");
-        conn.try_write_message(b"js json");
+        conn.try_write_message(b"js json.user".to_vec()).unwrap();
+        conn.try_write_message(b"js json.user.name.last".to_vec())
+            .unwrap();
+        conn.try_write_message(b"js json".to_vec()).unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -354,28 +371,36 @@ mod tests {
         // This test fails when key_value has more children than expected. We
         // are assuming an empty database.
 
-        conn.try_write_message(b"#g subs");
-        conn.try_write_message(b"#j subs");
-        conn.try_write_message(b"#k subs");
+        conn.try_write_message(b"#g subs".to_vec()).unwrap();
+        conn.try_write_message(b"#j subs".to_vec()).unwrap();
+        conn.try_write_message(b"#k subs".to_vec()).unwrap();
 
-        conn.try_write_message(b"s subs.user User");
-        conn.try_write_message(b"d subs.city");
-        conn.try_write_message(b"+ subs.city City");
-        conn.try_write_message(b"d subs.age");
-        conn.try_write_message(b"+1 subs.age Age");
-        conn.try_write_message(b"d subs.user.id");
-        conn.try_write_message(b"+1 subs.user.id User.ID");
-        conn.try_write_message(b"! subs.user.name User.Name");
-        conn.try_write_message(b"! subs.user.name.first User.Name.First");
-        conn.try_write_message(b"! subs.user.name.last User.Name.Last");
+        conn.try_write_message(b"s subs.user User".to_vec())
+            .unwrap();
+        conn.try_write_message(b"d subs.city".to_vec()).unwrap();
+        conn.try_write_message(b"+ subs.city City".to_vec())
+            .unwrap();
+        conn.try_write_message(b"d subs.age".to_vec()).unwrap();
+        conn.try_write_message(b"+1 subs.age Age".to_vec()).unwrap();
+        conn.try_write_message(b"d subs.user.id".to_vec()).unwrap();
+        conn.try_write_message(b"+1 subs.user.id User.ID".to_vec())
+            .unwrap();
+        conn.try_write_message(b"! subs.user.name User.Name".to_vec())
+            .unwrap();
+        conn.try_write_message(b"! subs.user.name.first User.Name.First".to_vec())
+            .unwrap();
+        conn.try_write_message(b"! subs.user.name.last User.Name.Last".to_vec())
+            .unwrap();
 
-        conn.try_write_message(b"#- subs");
+        conn.try_write_message(b"#- subs".to_vec()).unwrap();
 
-        conn.try_write_message(b"s subs.user User");
-        conn.try_write_message(b"d subs.city");
-        conn.try_write_message(b"+ subs.city City");
-        conn.try_write_message(b"d subs.age");
-        conn.try_write_message(b"+1 subs.age Age");
+        conn.try_write_message(b"s subs.user User".to_vec())
+            .unwrap();
+        conn.try_write_message(b"d subs.city".to_vec()).unwrap();
+        conn.try_write_message(b"+ subs.city City".to_vec())
+            .unwrap();
+        conn.try_write_message(b"d subs.age".to_vec()).unwrap();
+        conn.try_write_message(b"+1 subs.age Age".to_vec()).unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
