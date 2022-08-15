@@ -217,45 +217,44 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn key_value() {
-    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-    //     server.set_nonblocking(true).unwrap();
+    #[test]
+    fn key_value() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
 
-    //     let addr = server.local_addr().unwrap();
-    //     let mut conn = Connection::new(0, server, addr);
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
 
-    //     // This test fails when key_value has more children than expected. We
-    //     // are assuming an empty database.
+        // This test fails when key_value has more children than expected. We
+        // are assuming an empty database.
 
-    //     conn.try_write_message(b"s key_value.1 One".to_vec())
-    //         .unwrap();
-    //     conn.try_write_message(b"s key_value.2 Two".to_vec())
-    //         .unwrap();
-    //     conn.try_write_message(b"s key_value.3 Three".to_vec())
-    //         .unwrap();
-    //     conn.try_write_message(b"s key_value.3.1 Three.One".to_vec())
-    //         .unwrap();
-    //     conn.try_write_message(b"s key_value.3.2 Three.Two".to_vec())
-    //         .unwrap();
-    //     conn.try_write_message(b"k key_value".to_vec()).unwrap();
+        conn.try_write_message(b"s key_value.1 One".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s key_value.2 Two".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s key_value.3 Three".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s key_value.3.1 Three.One".to_vec())
+            .unwrap();
+        conn.try_write_message(b"s key_value.3.2 Three.Two".to_vec())
+            .unwrap();
+        conn.try_write_message(b"k key_value".to_vec()).unwrap();
 
-    //     sleep(Duration::from_millis(200));
-    //     let response = conn.try_read().unwrap();
-    //     println!("{:?}\n", response);
-    //     println!("{}", String::from_utf8_lossy(&response));
-    //     sleep(Duration::from_millis(200));
+        sleep(Duration::from_millis(200));
+        let response = conn.try_read().unwrap();
+        println!("{:?}\n", response);
+        println!("{}", String::from_utf8_lossy(&response));
+        sleep(Duration::from_millis(200));
 
-    //     assert_eq!(
-    //         response,
-    //         &[
-    //             79, 75, 10, 79, 75, 10, 79, 75, 10, 79, 75, 10, 79, 75, 10, 49, 32, 79, 110, 101,
-    //             0, 50, 32, 84, 119, 111, 0, 51, 32, 84, 104, 114, 101, 101, 0, 49, 32, 84, 104,
-    //             114, 101, 101, 46, 79, 110, 101, 0, 50, 32, 84, 104, 114, 101, 101, 46, 84, 119,
-    //             111, 10
-    //         ]
-    //     );
-    // }
+        assert_eq!(
+            response,
+            &[
+                79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 49, 32, 79, 110, 101, 0, 50, 32, 84, 119,
+                111, 0, 51, 32, 84, 104, 114, 101, 101, 0, 49, 32, 84, 104, 114, 101, 101, 46, 79,
+                110, 101, 0, 50, 32, 84, 104, 114, 101, 101, 46, 84, 119, 111
+            ]
+        );
+    }
 
     // #[test]
     // fn json() {
