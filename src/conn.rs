@@ -79,7 +79,6 @@ impl Connection {
                         // Let's split, send the first part and deal with the
                         // rest on the next iteration.
 
-                        println!("Size: {}, buffer: {}", size, buffer_len);
                         let split = self.buffer.split_off(size as usize);
                         self.buffer.drain(0..2); // @todo This fails when buffer_len is bigger than 65535 bytes because of the protocol.
                         let result = self.buffer.to_owned();
@@ -102,11 +101,10 @@ impl Connection {
         }
     }
 
-    pub fn try_write_message(&mut self, data: Vec<u8>) -> io::Result<usize> {
-        // let len = data.len() + 2;
-        // data.insert(0, ((len & 0xFF00) >> 8) as u8);
-        // data.insert(1, (len & 0x00FF) as u8);
-        // data.push(b'\n');
+    pub fn try_write_message(&mut self, mut data: Vec<u8>) -> io::Result<usize> {
+        let len = data.len() + 2;
+        data.insert(0, ((len & 0xFF00) >> 8) as u8);
+        data.insert(1, (len & 0x00FF) as u8);
 
         self.try_write(data)
     }
