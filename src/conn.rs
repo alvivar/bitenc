@@ -1,6 +1,6 @@
 use std::cmp::Ordering;
-use std::io::ErrorKind::{BrokenPipe, Interrupted, WouldBlock, WriteZero};
-use std::io::{self, Read, Write};
+use std::io::ErrorKind::{self, BrokenPipe, Interrupted, WouldBlock, WriteZero};
+use std::io::{self, Error, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 
 pub enum Response {
@@ -40,17 +40,28 @@ impl Connection {
     /// Reads the socket and acts like a buffer to return complete messages
     /// according to the protocol. You need to call this function in a loop and
     /// retry when Response::Pending is returned.
+    #[allow(unused)]
     pub fn try_read_message(&mut self) -> Response {
         match self.try_read() {
             Ok(mut received) => {
-                // Loop because "received" could have more than one message in the
-                // same read.
+                // Loop because "received" could have more than one message in
+                // the same read.
 
                 self.buffer.append(&mut received);
 
                 // The first 2 bytes represent the message size.
                 let size = (self.buffer[0] as u32) << 8 | (self.buffer[1] as u32); // Big endian
                 let buffer_len = self.buffer.len() as u32;
+
+                if buffer_len > 65535 {
+                    self.closed = true;
+                    self.buffer.clear();
+
+                    return Response::Error(Error::new(
+                        ErrorKind::Unsupported,
+                        "Message received is bigger than 65535 bytes and the protocol uses only 2 bytes to represent the size.",
+                    ));
+                }
 
                 match size.cmp(&buffer_len) {
                     Ordering::Equal => {
@@ -65,11 +76,12 @@ impl Connection {
 
                     Ordering::Less => {
                         // The message received contains more than one message.
-                        // Let's split, send the first part and deal with the rest
-                        // on the next iteration.
+                        // Let's split, send the first part and deal with the
+                        // rest on the next iteration.
 
+                        println!("Size: {}, buffer: {}", size, buffer_len);
                         let split = self.buffer.split_off(size as usize);
-                        self.buffer.drain(0..2);
+                        self.buffer.drain(0..2); // @todo This fails when buffer_len is bigger than 65535 bytes because of the protocol.
                         let result = self.buffer.to_owned();
                         self.buffer = split;
 
@@ -77,9 +89,9 @@ impl Connection {
                     }
 
                     Ordering::Greater => {
-                        // The loop should only happen when we need to unpack more
-                        // than one message received in the same read, else break to
-                        // deal with the buffer or new messages.
+                        // The loop should only happen when we need to unpack
+                        // more than one message received in the same read, else
+                        // break to deal with the buffer or new messages.
 
                         Response::None
                     }
@@ -90,10 +102,11 @@ impl Connection {
         }
     }
 
-    pub fn try_write_message(&mut self, mut data: Vec<u8>) -> io::Result<usize> {
-        let len = data.len() + 2;
-        data.insert(0, ((len & 0xFF00) >> 8) as u8);
-        data.insert(1, (len & 0x00FF) as u8);
+    pub fn try_write_message(&mut self, data: Vec<u8>) -> io::Result<usize> {
+        // let len = data.len() + 2;
+        // data.insert(0, ((len & 0xFF00) >> 8) as u8);
+        // data.insert(1, (len & 0x00FF) as u8);
+        // data.push(b'\n');
 
         self.try_write(data)
     }
