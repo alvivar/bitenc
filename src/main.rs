@@ -17,7 +17,7 @@ fn main() {
     loop {
         let mut input = String::new();
 
-        print!("> ");
+        print!("\n> ");
         stdout().flush().unwrap();
         stdin().read_line(&mut input).unwrap();
 
