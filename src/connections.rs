@@ -3,7 +3,7 @@ use std::io::ErrorKind::{self, BrokenPipe, Interrupted, WouldBlock, WriteZero};
 use std::io::{self, Error, Read, Write};
 use std::net::{SocketAddr, TcpStream};
 
-pub enum Response {
+pub enum Message {
     None,
     Some(Vec<u8>),
     Pending(Vec<u8>),
@@ -34,14 +34,10 @@ impl Connection {
         }
     }
 
-    // @todo This probably needs to be a trait, because it belongs to the
-    // protocol idea.
-
-    /// Reads the socket and acts like a buffer to return complete messages
+    /// Reads the socket acting like a buffer to return complete messages
     /// according to the protocol. You need to call this function in a loop and
     /// retry when Response::Pending is returned.
-    #[allow(unused)]
-    pub fn try_read_message(&mut self) -> Response {
+    pub fn try_read_message(&mut self) -> Message {
         match self.try_read() {
             Ok(mut received) => {
                 // Loop because "received" could have more than one message in
@@ -50,14 +46,15 @@ impl Connection {
                 self.buffer.append(&mut received);
 
                 // The first 2 bytes represent the message size.
-                let size = (self.buffer[0] as u32) << 8 | (self.buffer[1] as u32); // Big endian
+                let size = get_size(&self.buffer[..]);
                 let buffer_len = self.buffer.len() as u32;
 
+                // Bigger than what can be represented in 2 bytes.
                 if buffer_len > 65535 {
                     self.closed = true;
                     self.buffer.clear();
 
-                    return Response::Error(Error::new(
+                    return Message::Error(Error::new(
                         ErrorKind::Unsupported,
                         "Message received is bigger than 65535 bytes and the protocol uses only 2 bytes to represent the size.",
                     ));
@@ -71,7 +68,7 @@ impl Connection {
                         let result = self.buffer.to_owned();
                         self.buffer.clear();
 
-                        Response::Some(result)
+                        Message::Some(result)
                     }
 
                     Ordering::Less => {
@@ -84,7 +81,7 @@ impl Connection {
                         let result = self.buffer.to_owned();
                         self.buffer = split;
 
-                        Response::Pending(result)
+                        Message::Pending(result)
                     }
 
                     Ordering::Greater => {
@@ -92,20 +89,17 @@ impl Connection {
                         // more than one message received in the same read, else
                         // break to deal with the buffer or new messages.
 
-                        Response::None
+                        Message::None
                     }
                 }
             }
 
-            Err(err) => Response::Error(err),
+            Err(err) => Message::Error(err),
         }
     }
 
-    pub fn try_write_message(&mut self, mut data: Vec<u8>) -> io::Result<usize> {
-        let len = data.len() + 2;
-        data.insert(0, ((len & 0xFF00) >> 8) as u8);
-        data.insert(1, (len & 0x00FF) as u8);
-
+    pub fn try_write_message(&mut self, data: Vec<u8>) -> io::Result<usize> {
+        let data = insert_size(data);
         self.try_write(data)
     }
 
@@ -192,4 +186,21 @@ fn write(socket: &mut TcpStream, data: Vec<u8>) -> io::Result<usize> {
         // Other errors we'll consider fatal.
         Err(err) => Err(err),
     }
+}
+
+/// Insert at the beginning 2 bytes representing the size of the message.
+pub fn insert_size(mut bytes: Vec<u8>) -> Vec<u8> {
+    let len = (bytes.len() + 2) as u64;
+    let byte0 = ((len & 0xFF00) >> 8) as u8;
+    let byte1 = (len & 0x00FF) as u8;
+    let size = [byte0, byte1];
+
+    bytes.splice(0..0, size);
+    bytes
+}
+
+/// Returns the first two bytes as a u32 big endian, conceptually the size of
+/// the message.
+pub fn get_size(bytes: &[u8]) -> u32 {
+    (bytes[0] as u32) << 8 | bytes[1] as u32
 }

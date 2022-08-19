@@ -1,6 +1,6 @@
-mod conn;
+mod connections;
 
-use crate::conn::Connection;
+use crate::connections::Connection;
 
 use std::io::{stdin, stdout, Write};
 use std::net::TcpStream;
@@ -34,7 +34,7 @@ fn main() {
 
 #[cfg(test)]
 mod tests {
-    use crate::conn::Connection;
+    use crate::connections::Connection;
 
     use std::{net::TcpStream, thread::sleep, time::Duration};
 
@@ -203,55 +203,55 @@ mod tests {
         );
     }
 
-    // #[test]
-    // fn get_delete() {
-    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-    //     server.set_nonblocking(true).unwrap();
+    #[test]
+    fn get_delete() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
 
-    //     let addr = server.local_addr().unwrap();
-    //     let mut conn = Connection::new(0, server, addr);
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
 
-    //     conn.try_write_message(b"d set".to_vec()).unwrap();
-    //     conn.try_write_message(b"d maybe".to_vec()).unwrap();
-    //     conn.try_write_message(b"d inc".to_vec()).unwrap();
-    //     conn.try_write_message(b"d append".to_vec()).unwrap();
+        conn.try_write_message(b"d set".to_vec()).unwrap();
+        conn.try_write_message(b"d maybe".to_vec()).unwrap();
+        conn.try_write_message(b"d inc".to_vec()).unwrap();
+        conn.try_write_message(b"d append".to_vec()).unwrap();
 
-    //     conn.try_write_message(b"s set Set!".to_vec()).unwrap();
-    //     conn.try_write_message(b"s? maybe Maybe!".to_vec()).unwrap();
-    //     conn.try_write_message(b"+1 inc".to_vec()).unwrap();
-    //     conn.try_write_message(b"+ append Append!".to_vec())
-    //         .unwrap();
+        conn.try_write_message(b"s set Set!".to_vec()).unwrap();
+        conn.try_write_message(b"s? maybe Maybe!".to_vec()).unwrap();
+        conn.try_write_message(b"+1 inc".to_vec()).unwrap();
+        conn.try_write_message(b"+ append Append!".to_vec())
+            .unwrap();
 
-    //     conn.try_write_message(b"g set".to_vec()).unwrap();
-    //     conn.try_write_message(b"g maybe".to_vec()).unwrap();
-    //     conn.try_write_message(b"g inc".to_vec()).unwrap();
-    //     conn.try_write_message(b"g append".to_vec()).unwrap();
+        conn.try_write_message(b"g set".to_vec()).unwrap();
+        conn.try_write_message(b"g maybe".to_vec()).unwrap();
+        conn.try_write_message(b"g inc".to_vec()).unwrap();
+        conn.try_write_message(b"g append".to_vec()).unwrap();
 
-    //     conn.try_write_message(b"d set".to_vec()).unwrap();
-    //     conn.try_write_message(b"d maybe".to_vec()).unwrap();
-    //     conn.try_write_message(b"d inc".to_vec()).unwrap();
-    //     conn.try_write_message(b"d append".to_vec()).unwrap();
+        conn.try_write_message(b"d set".to_vec()).unwrap();
+        conn.try_write_message(b"d maybe".to_vec()).unwrap();
+        conn.try_write_message(b"d inc".to_vec()).unwrap();
+        conn.try_write_message(b"d append".to_vec()).unwrap();
 
-    //     conn.try_write_message(b"g set".to_vec()).unwrap();
-    //     conn.try_write_message(b"g maybe".to_vec()).unwrap();
-    //     conn.try_write_message(b"g inc".to_vec()).unwrap();
-    //     conn.try_write_message(b"g append".to_vec()).unwrap();
+        conn.try_write_message(b"g set".to_vec()).unwrap();
+        conn.try_write_message(b"g maybe".to_vec()).unwrap();
+        conn.try_write_message(b"g inc".to_vec()).unwrap();
+        conn.try_write_message(b"g append".to_vec()).unwrap();
 
-    //     sleep(Duration::from_millis(200));
-    //     let response = conn.try_read().unwrap();
-    //     println!("{:?}\n", response);
-    //     println!("{}", String::from_utf8_lossy(&response));
-    //     sleep(Duration::from_millis(200));
+        sleep(Duration::from_millis(200));
+        let response = conn.try_read().unwrap();
+        println!("{:?}\n", response);
+        println!("{}", String::from_utf8_lossy(&response));
+        sleep(Duration::from_millis(200));
 
-    //     assert_eq!(
-    //         response,
-    //         &[
-    //             79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 0, 0, 0, 0, 0, 0, 0, 0, 65, 112,
-    //             112, 101, 110, 100, 33, 83, 101, 116, 33, 77, 97, 121, 98, 101, 33, 0, 0, 0, 0, 0,
-    //             0, 0, 0, 65, 112, 112, 101, 110, 100, 33, 79, 75, 79, 75, 79, 75, 79, 75
-    //         ]
-    //     );
-    // }
+        assert_eq!(
+            response,
+            &[
+                79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 0, 0, 0, 0, 0, 0, 0, 0, 65, 112,
+                112, 101, 110, 100, 33, 83, 101, 116, 33, 77, 97, 121, 98, 101, 33, 0, 0, 0, 0, 0,
+                0, 0, 0, 65, 112, 112, 101, 110, 100, 33, 79, 75, 79, 75, 79, 75, 79, 75
+            ]
+        );
+    }
 
     // #[test]
     // fn key_value() {
