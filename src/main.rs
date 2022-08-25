@@ -2,8 +2,7 @@ mod connections;
 mod util;
 
 use crate::connections::Connection;
-use crate::util::get_id;
-use crate::util::stamp_header;
+use crate::util::{get_id, stamp_header};
 
 use std::io::{stdin, stdout, Write};
 use std::net::TcpStream;
@@ -43,9 +42,9 @@ fn main() {
 #[cfg(test)]
 mod bite_tests {
     use crate::connections::Connection;
-    use crate::util::{get_id, stamp_header};
+    use crate::util::{get_id, get_read, stamp_header};
 
-    use std::{net::TcpStream, thread::sleep, time::Duration};
+    use std::net::TcpStream;
 
     #[test]
     fn empty_message() {
@@ -57,14 +56,11 @@ mod bite_tests {
 
         let id = get_id(&mut conn);
         for _ in 0..10 {
-            conn.try_write(stamp_header(b"".to_vec(), id, 0)).unwrap();
+            conn.try_write(b"!".to_vec()).unwrap();
+            // conn.try_write(stamp_header(b"".to_vec(), id, 0)).unwrap();
         }
 
-        sleep(Duration::from_millis(200));
-        let response = conn.try_read().unwrap();
-        println!("{:?}\n", response);
-        println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(200));
+        let response = get_read(&mut conn);
 
         assert_eq!(
             &response,
@@ -87,7 +83,7 @@ mod bite_tests {
 
         let id = get_id(&mut conn);
 
-        conn.try_write(stamp_header(b"s set Set!".to_vec(), id, 0))
+        conn.try_write(stamp_header(b"s set SET".to_vec(), id, 0))
             .unwrap();
         conn.try_write(stamp_header(b"g set".to_vec(), id, 0))
             .unwrap();
@@ -96,17 +92,13 @@ mod bite_tests {
         conn.try_write(stamp_header(b"g set".to_vec(), id, 0))
             .unwrap();
 
-        sleep(Duration::from_millis(200));
-        let response = conn.try_read().unwrap();
-        println!("{:?}\n", response);
-        println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(200));
+        let response = get_read(&mut conn);
 
         assert_eq!(
             response,
             &[
-                0, 2, 0, 0, 0, 8, 79, 75, 0, 2, 0, 0, 0, 10, 83, 101, 116, 33, 0, 2, 0, 0, 0, 8,
-                79, 75, 0, 2, 0, 0, 0, 6
+                0, 2, 0, 0, 0, 8, 79, 75, 0, 2, 0, 0, 0, 9, 83, 69, 84, 0, 2, 0, 0, 0, 8, 79, 75,
+                0, 2, 0, 0, 0, 6
             ]
         );
     }
@@ -132,17 +124,13 @@ mod bite_tests {
         conn.try_write(stamp_header(b"g maybe".to_vec(), id, 0))
             .unwrap();
 
-        sleep(Duration::from_millis(200));
-        let response = conn.try_read().unwrap();
-        println!("{:?}\n", response);
-        println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(200));
+        let response = get_read(&mut conn);
 
         assert_eq!(
             response,
             &[
-                0, 4, 79, 75, 0, 4, 79, 75, 0, 8, 77, 97, 121, 98, 101, 33, 0, 4, 79, 75, 0, 8, 77,
-                97, 121, 98, 101, 33
+                0, 3, 0, 0, 0, 8, 79, 75, 0, 3, 0, 0, 0, 8, 79, 75, 0, 3, 0, 0, 0, 11, 77, 65, 89,
+                66, 69, 0, 3, 0, 0, 0, 8, 79, 75, 0, 3, 0, 0, 0, 11, 77, 65, 89, 66, 69
             ]
         );
     }
