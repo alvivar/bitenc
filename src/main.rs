@@ -1,6 +1,9 @@
 mod connections;
+mod util;
 
 use crate::connections::Connection;
+use crate::util::get_id;
+use crate::util::stamp_header;
 
 use std::io::{stdin, stdout, Write};
 use std::net::TcpStream;
@@ -14,6 +17,8 @@ fn main() {
     let addr = server.local_addr().unwrap();
     let mut conn = Connection::new(0, server, addr);
 
+    let id = get_id(&mut conn);
+
     loop {
         let mut input = String::new();
 
@@ -22,8 +27,11 @@ fn main() {
         stdin().read_line(&mut input).unwrap();
 
         let message = input.trim().as_bytes().to_vec();
+        let message = stamp_header(message, id, 0);
         println!("> {:?}", message);
-        conn.try_write_message(message).unwrap();
+        if let Ok(count) = conn.try_write(message) {
+            println!("{} bytes written", count);
+        }
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -33,8 +41,9 @@ fn main() {
 }
 
 #[cfg(test)]
-mod tests {
+mod bite_tests {
     use crate::connections::Connection;
+    use crate::util::{get_id, stamp_header};
 
     use std::{net::TcpStream, thread::sleep, time::Duration};
 
@@ -46,8 +55,9 @@ mod tests {
         let addr = server.local_addr().unwrap();
         let mut conn = Connection::new(0, server, addr);
 
+        let id = get_id(&mut conn);
         for _ in 0..10 {
-            conn.try_write_message(b"".to_vec()).unwrap();
+            conn.try_write(stamp_header(b"".to_vec(), id, 0)).unwrap();
         }
 
         sleep(Duration::from_millis(200));
@@ -56,7 +66,15 @@ mod tests {
         println!("{}", String::from_utf8_lossy(&response));
         sleep(Duration::from_millis(200));
 
-        assert_eq!(response, &[]);
+        assert_eq!(
+            &response,
+            &[
+                0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1,
+                0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0,
+                0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8,
+                78, 79
+            ]
+        );
     }
 
     #[test]
@@ -67,10 +85,16 @@ mod tests {
         let addr = server.local_addr().unwrap();
         let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"s set Set!".to_vec()).unwrap();
-        conn.try_write_message(b"g set".to_vec()).unwrap();
-        conn.try_write_message(b"s set".to_vec()).unwrap();
-        conn.try_write_message(b"g set".to_vec()).unwrap();
+        let id = get_id(&mut conn);
+
+        conn.try_write(stamp_header(b"s set Set!".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"g set".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"s set".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"g set".to_vec(), id, 0))
+            .unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -80,7 +104,10 @@ mod tests {
 
         assert_eq!(
             response,
-            &[0, 4, 79, 75, 0, 6, 83, 101, 116, 33, 0, 4, 79, 75, 0, 2]
+            &[
+                0, 2, 0, 0, 0, 8, 79, 75, 0, 2, 0, 0, 0, 10, 83, 101, 116, 33, 0, 2, 0, 0, 0, 8,
+                79, 75, 0, 2, 0, 0, 0, 6
+            ]
         );
     }
 
@@ -92,12 +119,18 @@ mod tests {
         let addr = server.local_addr().unwrap();
         let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"d maybe".to_vec()).unwrap();
-        conn.try_write_message(b"s? maybe Maybe!".to_vec()).unwrap();
-        conn.try_write_message(b"g maybe".to_vec()).unwrap();
-        conn.try_write_message(b"s? maybe New maybe!".to_vec())
+        let id = get_id(&mut conn);
+
+        conn.try_write(stamp_header(b"d maybe".to_vec(), id, 0))
             .unwrap();
-        conn.try_write_message(b"g maybe".to_vec()).unwrap();
+        conn.try_write(stamp_header(b"s? maybe MAYBE".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"g maybe".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"s? maybe NEW".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"g maybe".to_vec(), id, 0))
+            .unwrap();
 
         sleep(Duration::from_millis(200));
         let response = conn.try_read().unwrap();
@@ -114,144 +147,143 @@ mod tests {
         );
     }
 
-    #[test]
-    fn inc() {
-        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-        server.set_nonblocking(true).unwrap();
+    // #[test]
+    // fn inc() {
+    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+    //     server.set_nonblocking(true).unwrap();
 
-        let addr = server.local_addr().unwrap();
-        let mut conn = Connection::new(0, server, addr);
+    //     let addr = server.local_addr().unwrap();
+    //     let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"d inc".to_vec()).unwrap();
-        conn.try_write_message(b"+1 inc".to_vec()).unwrap();
-        conn.try_write_message(b"g inc".to_vec()).unwrap();
-        conn.try_write_message(b"+1 inc".to_vec()).unwrap();
-        conn.try_write_message(b"g inc".to_vec()).unwrap();
+    //     conn.try_write(b"d inc".to_vec()).unwrap();
+    //     conn.try_write(b"+1 inc".to_vec()).unwrap();
+    //     conn.try_write(b"g inc".to_vec()).unwrap();
+    //     conn.try_write(b"+1 inc".to_vec()).unwrap();
+    //     conn.try_write(b"g inc".to_vec()).unwrap();
 
-        sleep(Duration::from_millis(200));
-        let response = conn.try_read().unwrap();
-        println!("{:?}\n", response);
-        println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(200));
+    //     sleep(Duration::from_millis(200));
+    //     let response = conn.try_read().unwrap();
+    //     println!("{:?}\n", response);
+    //     println!("{}", String::from_utf8_lossy(&response));
+    //     sleep(Duration::from_millis(200));
 
-        assert_eq!(
-            response,
-            &[
-                0, 4, 79, 75, 0, 10, 0, 0, 0, 0, 0, 0, 0, 1, 0, 10, 0, 0, 0, 0, 0, 0, 0, 1, 0, 10,
-                0, 0, 0, 0, 0, 0, 0, 2, 0, 10, 0, 0, 0, 0, 0, 0, 0, 2
-            ]
-        );
-    }
+    //     assert_eq!(
+    //         response,
+    //         &[
+    //             0, 4, 79, 75, 0, 10, 0, 0, 0, 0, 0, 0, 0, 1, 0, 10, 0, 0, 0, 0, 0, 0, 0, 1, 0, 10,
+    //             0, 0, 0, 0, 0, 0, 0, 2, 0, 10, 0, 0, 0, 0, 0, 0, 0, 2
+    //         ]
+    //     );
+    // }
 
-    #[test]
-    fn inc_small_key() {
-        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-        server.set_nonblocking(true).unwrap();
+    // #[test]
+    // fn inc_small_key() {
+    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+    //     server.set_nonblocking(true).unwrap();
 
-        let addr = server.local_addr().unwrap();
-        let mut conn = Connection::new(0, server, addr);
+    //     let addr = server.local_addr().unwrap();
+    //     let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"d key".to_vec()).unwrap();
-        conn.try_write_message(b"s key 1".to_vec()).unwrap();
-        conn.try_write_message(b"+1 key".to_vec()).unwrap();
+    //     conn.try_write(b"d key".to_vec()).unwrap();
+    //     conn.try_write(b"s key 1".to_vec()).unwrap();
+    //     conn.try_write(b"+1 key".to_vec()).unwrap();
 
-        conn.try_write_message(b"d key".to_vec()).unwrap();
-        conn.try_write_message(b"+1 key".to_vec()).unwrap();
+    //     conn.try_write(b"d key".to_vec()).unwrap();
+    //     conn.try_write(b"+1 key".to_vec()).unwrap();
 
-        sleep(Duration::from_millis(200));
-        let response = conn.try_read().unwrap();
-        println!("{:?}\n", response);
-        println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(200));
+    //     sleep(Duration::from_millis(200));
+    //     let response = conn.try_read().unwrap();
+    //     println!("{:?}\n", response);
+    //     println!("{}", String::from_utf8_lossy(&response));
+    //     sleep(Duration::from_millis(200));
 
-        assert_eq!(
-            response,
-            &[
-                0, 4, 79, 75, 0, 4, 79, 75, 0, 10, 0, 0, 0, 0, 0, 0, 0, 2, 0, 4, 79, 75, 0, 10, 0,
-                0, 0, 0, 0, 0, 0, 1
-            ]
-        );
-    }
+    //     assert_eq!(
+    //         response,
+    //         &[
+    //             0, 4, 79, 75, 0, 4, 79, 75, 0, 10, 0, 0, 0, 0, 0, 0, 0, 2, 0, 4, 79, 75, 0, 10, 0,
+    //             0, 0, 0, 0, 0, 0, 1
+    //         ]
+    //     );
+    // }
 
-    #[test]
-    fn append() {
-        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-        server.set_nonblocking(true).unwrap();
+    // #[test]
+    // fn append() {
+    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+    //     server.set_nonblocking(true).unwrap();
 
-        let addr = server.local_addr().unwrap();
-        let mut conn = Connection::new(0, server, addr);
+    //     let addr = server.local_addr().unwrap();
+    //     let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"d append".to_vec()).unwrap();
-        conn.try_write_message(b"+ append One".to_vec()).unwrap();
-        conn.try_write_message(b"+ append Two".to_vec()).unwrap();
+    //     conn.try_write(b"d append".to_vec()).unwrap();
+    //     conn.try_write(b"+ append One".to_vec()).unwrap();
+    //     conn.try_write(b"+ append Two".to_vec()).unwrap();
 
-        conn.try_write_message(b"s append Three".to_vec()).unwrap();
-        conn.try_write_message(b"+ append Four".to_vec()).unwrap();
+    //     conn.try_write(b"s append Three".to_vec()).unwrap();
+    //     conn.try_write(b"+ append Four".to_vec()).unwrap();
 
-        sleep(Duration::from_millis(200));
-        let response = conn.try_read().unwrap();
-        println!("{:?}\n", response);
-        println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(200));
+    //     sleep(Duration::from_millis(200));
+    //     let response = conn.try_read().unwrap();
+    //     println!("{:?}\n", response);
+    //     println!("{}", String::from_utf8_lossy(&response));
+    //     sleep(Duration::from_millis(200));
 
-        assert_eq!(
-            response,
-            &[
-                0, 4, 79, 75, 0, 5, 79, 110, 101, 0, 8, 79, 110, 101, 84, 119, 111, 0, 4, 79, 75,
-                0, 11, 84, 104, 114, 101, 101, 70, 111, 117, 114
-            ]
-        );
-    }
+    //     assert_eq!(
+    //         response,
+    //         &[
+    //             0, 4, 79, 75, 0, 5, 79, 110, 101, 0, 8, 79, 110, 101, 84, 119, 111, 0, 4, 79, 75,
+    //             0, 11, 84, 104, 114, 101, 101, 70, 111, 117, 114
+    //         ]
+    //     );
+    // }
 
-    #[test]
-    fn get_delete() {
-        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-        server.set_nonblocking(true).unwrap();
+    // #[test]
+    // fn get_delete() {
+    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+    //     server.set_nonblocking(true).unwrap();
 
-        let addr = server.local_addr().unwrap();
-        let mut conn = Connection::new(0, server, addr);
+    //     let addr = server.local_addr().unwrap();
+    //     let mut conn = Connection::new(0, server, addr);
 
-        conn.try_write_message(b"d set".to_vec()).unwrap();
-        conn.try_write_message(b"d maybe".to_vec()).unwrap();
-        conn.try_write_message(b"d inc".to_vec()).unwrap();
-        conn.try_write_message(b"d append".to_vec()).unwrap();
+    //     conn.try_write(b"d set".to_vec()).unwrap();
+    //     conn.try_write(b"d maybe".to_vec()).unwrap();
+    //     conn.try_write(b"d inc".to_vec()).unwrap();
+    //     conn.try_write(b"d append".to_vec()).unwrap();
 
-        conn.try_write_message(b"s set Set!".to_vec()).unwrap();
-        conn.try_write_message(b"s? maybe Maybe!".to_vec()).unwrap();
-        conn.try_write_message(b"+1 inc".to_vec()).unwrap();
-        conn.try_write_message(b"+ append Append!".to_vec())
-            .unwrap();
+    //     conn.try_write(b"s set Set!".to_vec()).unwrap();
+    //     conn.try_write(b"s? maybe Maybe!".to_vec()).unwrap();
+    //     conn.try_write(b"+1 inc".to_vec()).unwrap();
+    //     conn.try_write(b"+ append Append!".to_vec()).unwrap();
 
-        conn.try_write_message(b"g set".to_vec()).unwrap();
-        conn.try_write_message(b"g maybe".to_vec()).unwrap();
-        conn.try_write_message(b"g inc".to_vec()).unwrap();
-        conn.try_write_message(b"g append".to_vec()).unwrap();
+    //     conn.try_write(b"g set".to_vec()).unwrap();
+    //     conn.try_write(b"g maybe".to_vec()).unwrap();
+    //     conn.try_write(b"g inc".to_vec()).unwrap();
+    //     conn.try_write(b"g append".to_vec()).unwrap();
 
-        conn.try_write_message(b"d set".to_vec()).unwrap();
-        conn.try_write_message(b"d maybe".to_vec()).unwrap();
-        conn.try_write_message(b"d inc".to_vec()).unwrap();
-        conn.try_write_message(b"d append".to_vec()).unwrap();
+    //     conn.try_write(b"d set".to_vec()).unwrap();
+    //     conn.try_write(b"d maybe".to_vec()).unwrap();
+    //     conn.try_write(b"d inc".to_vec()).unwrap();
+    //     conn.try_write(b"d append".to_vec()).unwrap();
 
-        conn.try_write_message(b"g set".to_vec()).unwrap();
-        conn.try_write_message(b"g maybe".to_vec()).unwrap();
-        conn.try_write_message(b"g inc".to_vec()).unwrap();
-        conn.try_write_message(b"g append".to_vec()).unwrap();
+    //     conn.try_write(b"g set".to_vec()).unwrap();
+    //     conn.try_write(b"g maybe".to_vec()).unwrap();
+    //     conn.try_write(b"g inc".to_vec()).unwrap();
+    //     conn.try_write(b"g append".to_vec()).unwrap();
 
-        sleep(Duration::from_millis(200));
-        let response = conn.try_read().unwrap();
-        println!("{:?}\n", response);
-        println!("{}", String::from_utf8_lossy(&response));
-        sleep(Duration::from_millis(200));
+    //     sleep(Duration::from_millis(200));
+    //     let response = conn.try_read().unwrap();
+    //     println!("{:?}\n", response);
+    //     println!("{}", String::from_utf8_lossy(&response));
+    //     sleep(Duration::from_millis(200));
 
-        assert_eq!(
-            response,
-            &[
-                79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 0, 0, 0, 0, 0, 0, 0, 0, 65, 112,
-                112, 101, 110, 100, 33, 83, 101, 116, 33, 77, 97, 121, 98, 101, 33, 0, 0, 0, 0, 0,
-                0, 0, 0, 65, 112, 112, 101, 110, 100, 33, 79, 75, 79, 75, 79, 75, 79, 75
-            ]
-        );
-    }
+    //     assert_eq!(
+    //         response,
+    //         &[
+    //             79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 0, 0, 0, 0, 0, 0, 0, 0, 65, 112,
+    //             112, 101, 110, 100, 33, 83, 101, 116, 33, 77, 97, 121, 98, 101, 33, 0, 0, 0, 0, 0,
+    //             0, 0, 0, 65, 112, 112, 101, 110, 100, 33, 79, 75, 79, 75, 79, 75, 79, 75
+    //         ]
+    //     );
+    // }
 
     // #[test]
     // fn key_value() {
@@ -264,17 +296,17 @@ mod tests {
     //     // This test fails when key_value has more children than expected. We
     //     // are assuming an empty database.
 
-    //     conn.try_write_message(b"s key_value.1 One".to_vec())
+    //     conn.try_write(b"s key_value.1 One".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"s key_value.2 Two".to_vec())
+    //     conn.try_write(b"s key_value.2 Two".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"s key_value.3 Three".to_vec())
+    //     conn.try_write(b"s key_value.3 Three".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"s key_value.3.1 Three.One".to_vec())
+    //     conn.try_write(b"s key_value.3.1 Three.One".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"s key_value.3.2 Three.Two".to_vec())
+    //     conn.try_write(b"s key_value.3.2 Three.Two".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"k key_value".to_vec()).unwrap();
+    //     conn.try_write(b"k key_value".to_vec()).unwrap();
 
     //     sleep(Duration::from_millis(200));
     //     let response = conn.try_read().unwrap();
@@ -303,29 +335,29 @@ mod tests {
     //     // This test fails when key_value has more children than expected. We
     //     // are assuming an empty database.
 
-    //     conn.try_write_message(b"s json.user User".to_vec())
+    //     conn.try_write(b"s json.user User".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"s json.city City".to_vec())
+    //     conn.try_write(b"s json.city City".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"s json.age Age".to_vec()).unwrap();
-    //     conn.try_write_message(b"s json.user.id User.ID".to_vec())
+    //     conn.try_write(b"s json.age Age".to_vec()).unwrap();
+    //     conn.try_write(b"s json.user.id User.ID".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"s json.user.name User.Name".to_vec())
+    //     conn.try_write(b"s json.user.name User.Name".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"s json.user.name.first User.Name.First".to_vec())
+    //     conn.try_write(b"s json.user.name.first User.Name.First".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"s json.user.name.last User.Name.Last".to_vec())
+    //     conn.try_write(b"s json.user.name.last User.Name.Last".to_vec())
     //         .unwrap();
 
-    //     conn.try_write_message(b"j json.user".to_vec()).unwrap();
-    //     conn.try_write_message(b"j json.user.name.last".to_vec())
+    //     conn.try_write(b"j json.user".to_vec()).unwrap();
+    //     conn.try_write(b"j json.user.name.last".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"j json".to_vec()).unwrap();
+    //     conn.try_write(b"j json".to_vec()).unwrap();
 
-    //     conn.try_write_message(b"js json.user".to_vec()).unwrap();
-    //     conn.try_write_message(b"js json.user.name.last".to_vec())
+    //     conn.try_write(b"js json.user".to_vec()).unwrap();
+    //     conn.try_write(b"js json.user.name.last".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"js json".to_vec()).unwrap();
+    //     conn.try_write(b"js json".to_vec()).unwrap();
 
     //     sleep(Duration::from_millis(200));
     //     let response = conn.try_read().unwrap();
@@ -399,36 +431,36 @@ mod tests {
     //     // This test fails when key_value has more children than expected. We
     //     // are assuming an empty database.
 
-    //     conn.try_write_message(b"#g subs".to_vec()).unwrap();
-    //     conn.try_write_message(b"#j subs".to_vec()).unwrap();
-    //     conn.try_write_message(b"#k subs".to_vec()).unwrap();
+    //     conn.try_write(b"#g subs".to_vec()).unwrap();
+    //     conn.try_write(b"#j subs".to_vec()).unwrap();
+    //     conn.try_write(b"#k subs".to_vec()).unwrap();
 
-    //     conn.try_write_message(b"s subs.user User".to_vec())
+    //     conn.try_write(b"s subs.user User".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"d subs.city".to_vec()).unwrap();
-    //     conn.try_write_message(b"+ subs.city City".to_vec())
+    //     conn.try_write(b"d subs.city".to_vec()).unwrap();
+    //     conn.try_write(b"+ subs.city City".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"d subs.age".to_vec()).unwrap();
-    //     conn.try_write_message(b"+1 subs.age Age".to_vec()).unwrap();
-    //     conn.try_write_message(b"d subs.user.id".to_vec()).unwrap();
-    //     conn.try_write_message(b"+1 subs.user.id User.ID".to_vec())
+    //     conn.try_write(b"d subs.age".to_vec()).unwrap();
+    //     conn.try_write(b"+1 subs.age Age".to_vec()).unwrap();
+    //     conn.try_write(b"d subs.user.id".to_vec()).unwrap();
+    //     conn.try_write(b"+1 subs.user.id User.ID".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"! subs.user.name User.Name".to_vec())
+    //     conn.try_write(b"! subs.user.name User.Name".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"! subs.user.name.first User.Name.First".to_vec())
+    //     conn.try_write(b"! subs.user.name.first User.Name.First".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"! subs.user.name.last User.Name.Last".to_vec())
+    //     conn.try_write(b"! subs.user.name.last User.Name.Last".to_vec())
     //         .unwrap();
 
-    //     conn.try_write_message(b"#- subs".to_vec()).unwrap();
+    //     conn.try_write(b"#- subs".to_vec()).unwrap();
 
-    //     conn.try_write_message(b"s subs.user User".to_vec())
+    //     conn.try_write(b"s subs.user User".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"d subs.city".to_vec()).unwrap();
-    //     conn.try_write_message(b"+ subs.city City".to_vec())
+    //     conn.try_write(b"d subs.city".to_vec()).unwrap();
+    //     conn.try_write(b"+ subs.city City".to_vec())
     //         .unwrap();
-    //     conn.try_write_message(b"d subs.age".to_vec()).unwrap();
-    //     conn.try_write_message(b"+1 subs.age Age".to_vec()).unwrap();
+    //     conn.try_write(b"d subs.age".to_vec()).unwrap();
+    //     conn.try_write(b"+1 subs.age Age".to_vec()).unwrap();
 
     //     sleep(Duration::from_millis(200));
     //     let response = conn.try_read().unwrap();
