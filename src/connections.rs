@@ -1,14 +1,6 @@
-use std::cmp::Ordering;
-use std::io::ErrorKind::{self, BrokenPipe, Interrupted, WouldBlock, WriteZero};
-use std::io::{self, Error, Read, Write};
+use std::io::ErrorKind::{BrokenPipe, Interrupted, WouldBlock, WriteZero};
+use std::io::{self, Read, Write};
 use std::net::{SocketAddr, TcpStream};
-
-pub enum Message {
-    None,
-    Some(Vec<u8>),
-    Pending(Vec<u8>),
-    Error(io::Error),
-}
 
 pub struct Connection {
     pub id: usize,
@@ -16,91 +8,19 @@ pub struct Connection {
     pub addr: SocketAddr,
     pub to_send: Vec<Vec<u8>>,
     pub closed: bool,
-    buffer: Vec<u8>,
 }
 
 impl Connection {
     pub fn new(id: usize, socket: TcpStream, addr: SocketAddr) -> Connection {
         let to_send = Vec::<Vec<u8>>::new();
-        let buffer = Vec::<u8>::new();
 
         Connection {
             id,
             socket,
             addr,
             to_send,
-            buffer,
             closed: false,
         }
-    }
-
-    /// Reads the socket acting like a buffer to return complete messages
-    /// according to the protocol. You need to call this function in a loop and
-    /// retry when Response::Pending is returned.
-    pub fn try_read_message(&mut self) -> Message {
-        match self.try_read() {
-            Ok(mut received) => {
-                // Loop because "received" could have more than one message in
-                // the same read.
-
-                self.buffer.append(&mut received);
-
-                // The first 2 bytes represent the message size.
-                let size = get_size(&self.buffer[..]);
-                let buffer_len = self.buffer.len() as u32;
-
-                // Bigger than what can be represented in 2 bytes.
-                if buffer_len > 65535 {
-                    self.closed = true;
-                    self.buffer.clear();
-
-                    return Message::Error(Error::new(
-                        ErrorKind::Unsupported,
-                        "Message received is bigger than 65535 bytes and the protocol uses only 2 bytes to represent the size.",
-                    ));
-                }
-
-                match size.cmp(&buffer_len) {
-                    Ordering::Equal => {
-                        // The message is complete, just send it and break.
-
-                        self.buffer.drain(0..2);
-                        let result = self.buffer.to_owned();
-                        self.buffer.clear();
-
-                        Message::Some(result)
-                    }
-
-                    Ordering::Less => {
-                        // The message received contains more than one message.
-                        // Let's split, send the first part and deal with the
-                        // rest on the next iteration.
-
-                        let split = self.buffer.split_off(size as usize);
-                        self.buffer.drain(0..2); // @todo This fails when buffer_len is bigger than 65535 bytes because of the protocol.
-                        let result = self.buffer.to_owned();
-                        self.buffer = split;
-
-                        Message::Pending(result)
-                    }
-
-                    Ordering::Greater => {
-                        // The loop should only happen when we need to unpack
-                        // more than one message received in the same read, else
-                        // break to deal with the buffer or new messages.
-
-                        Message::None
-                    }
-                }
-            }
-
-            Err(err) => Message::Error(err),
-        }
-    }
-
-    pub fn try_write_message(&mut self, data: Vec<u8>) -> io::Result<usize> {
-        let data = insert_size(data);
-        self.try_write(data)
     }
 
     pub fn try_read(&mut self) -> io::Result<Vec<u8>> {
@@ -115,7 +35,7 @@ impl Connection {
         }
     }
 
-    fn try_write(&mut self, data: Vec<u8>) -> io::Result<usize> {
+    pub fn try_write(&mut self, data: Vec<u8>) -> io::Result<usize> {
         match write(&mut self.socket, data) {
             Ok(count) => Ok(count),
 
@@ -186,21 +106,4 @@ fn write(socket: &mut TcpStream, data: Vec<u8>) -> io::Result<usize> {
         // Other errors we'll consider fatal.
         Err(err) => Err(err),
     }
-}
-
-/// Insert at the beginning 2 bytes representing the size of the message.
-pub fn insert_size(mut bytes: Vec<u8>) -> Vec<u8> {
-    let len = (bytes.len() + 2) as u64;
-    let byte0 = ((len & 0xFF00) >> 8) as u8;
-    let byte1 = (len & 0x00FF) as u8;
-    let size = [byte0, byte1];
-
-    bytes.splice(0..0, size);
-    bytes
-}
-
-/// Returns the first two bytes as a u32 big endian, conceptually the size of
-/// the message.
-pub fn get_size(bytes: &[u8]) -> u32 {
-    (bytes[0] as u32) << 8 | bytes[1] as u32
 }
