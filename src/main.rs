@@ -45,6 +45,8 @@ mod bite_tests {
     use crate::util::{get_id, get_read, stamp_header};
 
     use std::net::TcpStream;
+    use std::thread::sleep;
+    use std::time::Duration;
 
     #[test]
     fn empty_message() {
@@ -54,22 +56,15 @@ mod bite_tests {
         let addr = server.local_addr().unwrap();
         let mut conn = Connection::new(0, server, addr);
 
-        let id = get_id(&mut conn);
-        for _ in 0..10 {
-            conn.try_write(b"!".to_vec()).unwrap();
-            // conn.try_write(stamp_header(b"".to_vec(), id, 0)).unwrap();
-        }
+        get_id(&mut conn);
+
+        conn.try_write(b"".to_vec()).unwrap();
 
         let response = get_read(&mut conn);
 
-        assert_eq!(
-            &response,
-            &[
-                0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1,
-                0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0,
-                0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8, 78, 79, 0, 1, 0, 0, 0, 8,
-                78, 79
-            ]
+        assert!(
+            response.is_empty(),
+            "A message without protocol should get disconnected!"
         );
     }
 
@@ -97,8 +92,8 @@ mod bite_tests {
         assert_eq!(
             response,
             &[
-                0, 2, 0, 0, 0, 8, 79, 75, 0, 2, 0, 0, 0, 9, 83, 69, 84, 0, 2, 0, 0, 0, 8, 79, 75,
-                0, 2, 0, 0, 0, 6
+                0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 9, 83, 69, 84, 0, id as u8,
+                0, 0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 6
             ]
         );
     }
@@ -129,188 +124,163 @@ mod bite_tests {
         assert_eq!(
             response,
             &[
-                0, 3, 0, 0, 0, 8, 79, 75, 0, 3, 0, 0, 0, 8, 79, 75, 0, 3, 0, 0, 0, 11, 77, 65, 89,
-                66, 69, 0, 3, 0, 0, 0, 8, 79, 75, 0, 3, 0, 0, 0, 11, 77, 65, 89, 66, 69
+                0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0,
+                0, 0, 11, 77, 65, 89, 66, 69, 0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0, 0,
+                0, 11, 77, 65, 89, 66, 69
             ]
         );
     }
 
-    // #[test]
-    // fn inc() {
-    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-    //     server.set_nonblocking(true).unwrap();
+    #[test]
+    fn inc() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
 
-    //     let addr = server.local_addr().unwrap();
-    //     let mut conn = Connection::new(0, server, addr);
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
 
-    //     conn.try_write(b"d inc".to_vec()).unwrap();
-    //     conn.try_write(b"+1 inc".to_vec()).unwrap();
-    //     conn.try_write(b"g inc".to_vec()).unwrap();
-    //     conn.try_write(b"+1 inc".to_vec()).unwrap();
-    //     conn.try_write(b"g inc".to_vec()).unwrap();
+        let id = get_id(&mut conn);
 
-    //     sleep(Duration::from_millis(200));
-    //     let response = conn.try_read().unwrap();
-    //     println!("{:?}\n", response);
-    //     println!("{}", String::from_utf8_lossy(&response));
-    //     sleep(Duration::from_millis(200));
+        conn.try_write(stamp_header(b"d inc".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"+1 inc".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"g inc".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"+1 inc".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"g inc".to_vec(), id, 0))
+            .unwrap();
 
-    //     assert_eq!(
-    //         response,
-    //         &[
-    //             0, 4, 79, 75, 0, 10, 0, 0, 0, 0, 0, 0, 0, 1, 0, 10, 0, 0, 0, 0, 0, 0, 0, 1, 0, 10,
-    //             0, 0, 0, 0, 0, 0, 0, 2, 0, 10, 0, 0, 0, 0, 0, 0, 0, 2
-    //         ]
-    //     );
-    // }
+        let response = get_read(&mut conn);
 
-    // #[test]
-    // fn inc_small_key() {
-    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-    //     server.set_nonblocking(true).unwrap();
+        assert_eq!(
+            response,
+            &[
+                0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 1,
+                0, id as u8, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 1, 0, id as u8, 0, 0, 0, 14, 0, 0,
+                0, 0, 0, 0, 0, 2, 0, id as u8, 0, 0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 2
+            ]
+        );
+    }
 
-    //     let addr = server.local_addr().unwrap();
-    //     let mut conn = Connection::new(0, server, addr);
+    #[test]
+    fn inc_small_key() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
 
-    //     conn.try_write(b"d key".to_vec()).unwrap();
-    //     conn.try_write(b"s key 1".to_vec()).unwrap();
-    //     conn.try_write(b"+1 key".to_vec()).unwrap();
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
 
-    //     conn.try_write(b"d key".to_vec()).unwrap();
-    //     conn.try_write(b"+1 key".to_vec()).unwrap();
+        let id = get_id(&mut conn);
 
-    //     sleep(Duration::from_millis(200));
-    //     let response = conn.try_read().unwrap();
-    //     println!("{:?}\n", response);
-    //     println!("{}", String::from_utf8_lossy(&response));
-    //     sleep(Duration::from_millis(200));
+        conn.try_write(stamp_header(b"d key".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"s key 1".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"+1 key".to_vec(), id, 0))
+            .unwrap();
 
-    //     assert_eq!(
-    //         response,
-    //         &[
-    //             0, 4, 79, 75, 0, 4, 79, 75, 0, 10, 0, 0, 0, 0, 0, 0, 0, 2, 0, 4, 79, 75, 0, 10, 0,
-    //             0, 0, 0, 0, 0, 0, 1
-    //         ]
-    //     );
-    // }
+        let response = get_read(&mut conn);
 
-    // #[test]
-    // fn append() {
-    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-    //     server.set_nonblocking(true).unwrap();
+        assert_eq!(
+            response,
+            &[
+                0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0,
+                0, 0, 14, 0, 0, 0, 0, 0, 0, 0, 2
+            ]
+        );
+    }
 
-    //     let addr = server.local_addr().unwrap();
-    //     let mut conn = Connection::new(0, server, addr);
+    #[test]
+    fn append() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
 
-    //     conn.try_write(b"d append".to_vec()).unwrap();
-    //     conn.try_write(b"+ append One".to_vec()).unwrap();
-    //     conn.try_write(b"+ append Two".to_vec()).unwrap();
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
 
-    //     conn.try_write(b"s append Three".to_vec()).unwrap();
-    //     conn.try_write(b"+ append Four".to_vec()).unwrap();
+        let id = get_id(&mut conn);
 
-    //     sleep(Duration::from_millis(200));
-    //     let response = conn.try_read().unwrap();
-    //     println!("{:?}\n", response);
-    //     println!("{}", String::from_utf8_lossy(&response));
-    //     sleep(Duration::from_millis(200));
+        conn.try_write(stamp_header(b"d append".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"+ append APP".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"+ append END".to_vec(), id, 0))
+            .unwrap();
 
-    //     assert_eq!(
-    //         response,
-    //         &[
-    //             0, 4, 79, 75, 0, 5, 79, 110, 101, 0, 8, 79, 110, 101, 84, 119, 111, 0, 4, 79, 75,
-    //             0, 11, 84, 104, 114, 101, 101, 70, 111, 117, 114
-    //         ]
-    //     );
-    // }
+        let response = get_read(&mut conn);
 
-    // #[test]
-    // fn get_delete() {
-    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-    //     server.set_nonblocking(true).unwrap();
+        assert_eq!(
+            response,
+            &[
+                0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 9, 65, 80, 80, 0, id as u8,
+                0, 0, 0, 12, 65, 80, 80, 69, 78, 68
+            ]
+        );
+    }
 
-    //     let addr = server.local_addr().unwrap();
-    //     let mut conn = Connection::new(0, server, addr);
+    #[test]
+    fn get_delete() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
 
-    //     conn.try_write(b"d set".to_vec()).unwrap();
-    //     conn.try_write(b"d maybe".to_vec()).unwrap();
-    //     conn.try_write(b"d inc".to_vec()).unwrap();
-    //     conn.try_write(b"d append".to_vec()).unwrap();
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
 
-    //     conn.try_write(b"s set Set!".to_vec()).unwrap();
-    //     conn.try_write(b"s? maybe Maybe!".to_vec()).unwrap();
-    //     conn.try_write(b"+1 inc".to_vec()).unwrap();
-    //     conn.try_write(b"+ append Append!".to_vec()).unwrap();
+        let id = get_id(&mut conn);
 
-    //     conn.try_write(b"g set".to_vec()).unwrap();
-    //     conn.try_write(b"g maybe".to_vec()).unwrap();
-    //     conn.try_write(b"g inc".to_vec()).unwrap();
-    //     conn.try_write(b"g append".to_vec()).unwrap();
+        conn.try_write(stamp_header(b"s delete DELETE".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"d delete".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"g delete".to_vec(), id, 0))
+            .unwrap();
 
-    //     conn.try_write(b"d set".to_vec()).unwrap();
-    //     conn.try_write(b"d maybe".to_vec()).unwrap();
-    //     conn.try_write(b"d inc".to_vec()).unwrap();
-    //     conn.try_write(b"d append".to_vec()).unwrap();
+        let response = get_read(&mut conn);
 
-    //     conn.try_write(b"g set".to_vec()).unwrap();
-    //     conn.try_write(b"g maybe".to_vec()).unwrap();
-    //     conn.try_write(b"g inc".to_vec()).unwrap();
-    //     conn.try_write(b"g append".to_vec()).unwrap();
+        assert_eq!(
+            response,
+            &[
+                0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0,
+                0, 0, 6
+            ]
+        );
+    }
 
-    //     sleep(Duration::from_millis(200));
-    //     let response = conn.try_read().unwrap();
-    //     println!("{:?}\n", response);
-    //     println!("{}", String::from_utf8_lossy(&response));
-    //     sleep(Duration::from_millis(200));
+    #[test]
+    fn key_value() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
 
-    //     assert_eq!(
-    //         response,
-    //         &[
-    //             79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 0, 0, 0, 0, 0, 0, 0, 0, 65, 112,
-    //             112, 101, 110, 100, 33, 83, 101, 116, 33, 77, 97, 121, 98, 101, 33, 0, 0, 0, 0, 0,
-    //             0, 0, 0, 65, 112, 112, 101, 110, 100, 33, 79, 75, 79, 75, 79, 75, 79, 75
-    //         ]
-    //     );
-    // }
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
 
-    // #[test]
-    // fn key_value() {
-    //     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
-    //     server.set_nonblocking(true).unwrap();
+        // This test fails when key_value has more children than expected. We
+        // are assuming an empty database.
 
-    //     let addr = server.local_addr().unwrap();
-    //     let mut conn = Connection::new(0, server, addr);
+        let id = get_id(&mut conn);
 
-    //     // This test fails when key_value has more children than expected. We
-    //     // are assuming an empty database.
+        conn.try_write(stamp_header(b"s kv.1 ONE".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"s kv.1.2 TWO".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"s kv.1.2.3 THREE".to_vec(), id, 0))
+            .unwrap();
+        conn.try_write(stamp_header(b"k kv".to_vec(), id, 0))
+            .unwrap();
 
-    //     conn.try_write(b"s key_value.1 One".to_vec())
-    //         .unwrap();
-    //     conn.try_write(b"s key_value.2 Two".to_vec())
-    //         .unwrap();
-    //     conn.try_write(b"s key_value.3 Three".to_vec())
-    //         .unwrap();
-    //     conn.try_write(b"s key_value.3.1 Three.One".to_vec())
-    //         .unwrap();
-    //     conn.try_write(b"s key_value.3.2 Three.Two".to_vec())
-    //         .unwrap();
-    //     conn.try_write(b"k key_value".to_vec()).unwrap();
+        let response = get_read(&mut conn);
 
-    //     sleep(Duration::from_millis(200));
-    //     let response = conn.try_read().unwrap();
-    //     println!("{:?}\n", response);
-    //     println!("{}", String::from_utf8_lossy(&response));
-    //     sleep(Duration::from_millis(200));
-
-    //     assert_eq!(
-    //         response,
-    //         &[
-    //             79, 75, 79, 75, 79, 75, 79, 75, 79, 75, 49, 32, 79, 110, 101, 0, 50, 32, 84, 119,
-    //             111, 0, 51, 32, 84, 104, 114, 101, 101, 0, 49, 32, 84, 104, 114, 101, 101, 46, 79,
-    //             110, 101, 0, 50, 32, 84, 104, 114, 101, 101, 46, 84, 119, 111
-    //         ]
-    //     );
-    // }
+        assert_eq!(
+            response,
+            &[
+                0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0,
+                0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 25, 49, 32, 79, 78, 69, 0, 50, 32, 84, 87,
+                79, 0, 51, 32, 84, 72, 82, 69, 69
+            ]
+        );
+    }
 
     // #[test]
     // fn json() {
