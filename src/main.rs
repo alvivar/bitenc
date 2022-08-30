@@ -47,8 +47,6 @@ mod bite_tests {
     use crate::util::{get_id, get_read, stamp_header};
 
     use std::net::TcpStream;
-    use std::thread::sleep;
-    use std::time::Duration;
 
     #[test]
     fn empty_message() {
