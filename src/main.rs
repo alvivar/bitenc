@@ -41,10 +41,14 @@ fn main() {
 
 #[cfg(test)]
 mod bite_tests {
+    use rand::{thread_rng, Rng};
+
     use crate::connections::Connection;
     use crate::util::{get_id, get_read, stamp_header};
 
     use std::net::TcpStream;
+    use std::thread::sleep;
+    use std::time::Duration;
 
     #[test]
     fn empty_message() {
@@ -414,5 +418,65 @@ mod bite_tests {
                 21, 123, 34, 115, 117, 98, 115, 34, 58, 34, 67, 65, 76, 76, 34, 125
             ]
         );
+    }
+
+    #[test]
+    fn big_message_with_wrong_protocol() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
+
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
+
+        let id = get_id(&mut conn);
+
+        for _ in 0..64 {
+            let mut data = [0u8; 65535 - 6];
+            thread_rng().try_fill(&mut data[..]).unwrap();
+
+            conn.try_write(stamp_header(data.to_vec(), id, 0)).unwrap();
+        }
+
+        let response = get_read(&mut conn);
+
+        let mut expected = Vec::new();
+        for _ in 0..64 {
+            expected.extend_from_slice(&[0, id as u8, 0, 0, 0, 8, 78, 79]);
+        }
+
+        assert_eq!(response, expected);
+    }
+
+    #[test]
+    fn biggest_sets_64() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
+
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
+
+        let id = get_id(&mut conn);
+
+        let max = 64;
+
+        for i in 0..max {
+            let mut data = [0u8; 65535];
+            thread_rng().try_fill(&mut data[..]).unwrap();
+
+            let mut set = format!("s set.{} ", i).as_bytes().to_vec();
+            set.append(&mut data.to_vec());
+            set.truncate(65535 - 6);
+
+            conn.try_write(stamp_header(set, id, 0)).unwrap();
+        }
+
+        let response = get_read(&mut conn);
+
+        let mut expected = Vec::new();
+        for _ in 0..max {
+            expected.extend_from_slice(&[0, id as u8, 0, 0, 0, 8, 79, 75]);
+        }
+
+        assert_eq!(response, expected);
     }
 }
