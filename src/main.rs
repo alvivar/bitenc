@@ -2,12 +2,10 @@ mod connections;
 mod util;
 
 use crate::connections::Connection;
-use crate::util::{get_id, stamp_header};
+use crate::util::{get_id, get_read, stamp_header};
 
 use std::io::{stdin, stdout, Write};
 use std::net::TcpStream;
-use std::thread::sleep;
-use std::time::Duration;
 
 fn main() {
     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
@@ -32,10 +30,7 @@ fn main() {
             println!("{} bytes written", count);
         }
 
-        sleep(Duration::from_millis(200));
-        let response = conn.try_read().unwrap();
-        println!("\n{:?}", response);
-        println!("\n{}", String::from_utf8_lossy(&response));
+        get_read(&mut conn);
     }
 }
 
