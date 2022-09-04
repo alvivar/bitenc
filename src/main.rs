@@ -438,7 +438,7 @@ mod bite_tests {
     }
 
     #[test]
-    fn biggest_sets_64() {
+    fn biggest_sets_128() {
         let server = TcpStream::connect("127.0.0.1:1984").unwrap();
         server.set_nonblocking(true).unwrap();
 
@@ -447,7 +447,7 @@ mod bite_tests {
 
         let id = get_id(&mut conn);
 
-        let max = 64;
+        let max = 128;
 
         for i in 0..max {
             let mut data = [0u8; 65535];
