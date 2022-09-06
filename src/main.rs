@@ -15,6 +15,7 @@ fn main() {
     let mut conn = Connection::new(0, server, addr);
 
     let id = get_id(&mut conn);
+    let mut sent_id = 0;
 
     loop {
         let mut input = String::new();
@@ -23,8 +24,10 @@ fn main() {
         stdout().flush().unwrap();
         stdin().read_line(&mut input).unwrap();
 
+        sent_id += 1;
         let message = input.trim().as_bytes().to_vec();
-        let message = stamp_header(message, id, 0);
+        let message = stamp_header(message, id, sent_id);
+
         println!("> {:?}", message);
         if let Ok(count) = conn.try_write(message) {
             println!("{} bytes written", count);
