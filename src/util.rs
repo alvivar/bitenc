@@ -24,7 +24,7 @@ pub fn stamp_header(mut bytes: Vec<u8>, from: u32, id: u32) -> Vec<u8> {
 pub fn get_id(conn: &mut Connection) -> u32 {
     sleep(Duration::from_millis(200));
     let response = conn.try_read().unwrap();
-    let id = u64::from_be_bytes(response[6..14].try_into().unwrap()) as u32;
+    let id = (response[0] as u32) << 8 | response[1] as u32;
     sleep(Duration::from_millis(200));
 
     id
