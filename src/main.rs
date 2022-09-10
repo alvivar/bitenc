@@ -62,7 +62,28 @@ mod bite_tests {
 
         assert!(
             response.is_empty(),
-            "A message without protocol should get disconnected!"
+            "A message without protocol should be disconnected!"
+        );
+    }
+
+    #[test]
+    fn wrong_client_id() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
+
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
+
+        let id = get_id(&mut conn) + 1;
+
+        conn.try_write(stamp_header(b"+1 id".to_vec(), id, 0))
+            .unwrap();
+
+        let response = get_read(&mut conn);
+
+        assert!(
+            response.is_empty(),
+            "A message without the correct client id should be disconnected!"
         );
     }
 
@@ -206,6 +227,8 @@ mod bite_tests {
             .unwrap();
         conn.try_write(stamp_header(b"+ append END".to_vec(), id, 0))
             .unwrap();
+        conn.try_write(stamp_header(b"g append".to_vec(), id, 0))
+            .unwrap();
 
         // get append needs to be added here ^
 
@@ -215,7 +238,7 @@ mod bite_tests {
             response,
             &[
                 0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 8, 79, 75, 0, id as u8, 0,
-                0, 0, 8, 79, 75
+                0, 0, 8, 79, 75, 0, id as u8, 0, 0, 0, 12, 65, 80, 80, 69, 78, 68
             ]
         );
     }
