@@ -436,7 +436,7 @@ mod bite_tests {
     }
 
     #[test]
-    fn big_message_with_wrong_protocol() {
+    fn big_messages_with_wrong_commands() {
         let server = TcpStream::connect("127.0.0.1:1984").unwrap();
         server.set_nonblocking(true).unwrap();
 
@@ -463,7 +463,7 @@ mod bite_tests {
     }
 
     #[test]
-    fn biggest_sets_128() {
+    fn biggest_sets_256() {
         let server = TcpStream::connect("127.0.0.1:1984").unwrap();
         server.set_nonblocking(true).unwrap();
 
@@ -472,7 +472,7 @@ mod bite_tests {
 
         let id = get_id(&mut conn);
 
-        let max = 128;
+        let max = 256;
 
         for i in 0..max {
             let mut data = [0u8; 65535];
