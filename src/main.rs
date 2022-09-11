@@ -29,11 +29,18 @@ fn main() {
         let message = stamp_header(message, id, sent_id);
 
         println!("> {:?}", message);
-        if let Ok(count) = conn.try_write(message) {
-            println!("{} bytes written", count);
-        }
 
-        get_read(&mut conn);
+        match conn.try_write(message) {
+            Ok(count) => {
+                println!("{} bytes written", count);
+                get_read(&mut conn);
+            }
+
+            Err(_) => {
+                println!("Reconnecting...");
+                main();
+            }
+        }
     }
 }
 
