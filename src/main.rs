@@ -58,7 +58,7 @@ mod bite_tests {
 
         conn.try_write(b"".to_vec()).unwrap();
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert!(
             response.is_empty(),
@@ -82,7 +82,7 @@ mod bite_tests {
         let response = get_read(&mut conn);
 
         assert!(
-            response.is_empty(),
+            response.is_none(),
             "A message without the correct client id should be disconnected!"
         );
     }
@@ -106,7 +106,7 @@ mod bite_tests {
         conn.try_write(stamp_header(b"g set".to_vec(), id, 0))
             .unwrap();
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert_eq!(
             response,
@@ -138,7 +138,7 @@ mod bite_tests {
         conn.try_write(stamp_header(b"g maybe".to_vec(), id, 0))
             .unwrap();
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert_eq!(
             response,
@@ -171,7 +171,7 @@ mod bite_tests {
         conn.try_write(stamp_header(b"g inc".to_vec(), id, 0))
             .unwrap();
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert_eq!(
             response,
@@ -200,7 +200,7 @@ mod bite_tests {
         conn.try_write(stamp_header(b"+1 key".to_vec(), id, 0))
             .unwrap();
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert_eq!(
             response,
@@ -232,7 +232,7 @@ mod bite_tests {
 
         // get append needs to be added here ^
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert_eq!(
             response,
@@ -260,7 +260,7 @@ mod bite_tests {
         conn.try_write(stamp_header(b"g delete".to_vec(), id, 0))
             .unwrap();
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert_eq!(
             response,
@@ -293,7 +293,7 @@ mod bite_tests {
         conn.try_write(stamp_header(b"k kv".to_vec(), id, 0))
             .unwrap();
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert_eq!(
             response,
@@ -329,7 +329,7 @@ mod bite_tests {
         conn.try_write(stamp_header(b"j j".to_vec(), id, 0))
             .unwrap();
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert_eq!(
             response,
@@ -367,7 +367,7 @@ mod bite_tests {
         conn.try_write(stamp_header(b"js js".to_vec(), id, 0))
             .unwrap();
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert_eq!(
             response,
@@ -411,7 +411,7 @@ mod bite_tests {
         conn.try_write(stamp_header(b"! subs CALL".to_vec(), id, 0))
             .unwrap();
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         assert_eq!(
             response,
@@ -452,7 +452,7 @@ mod bite_tests {
             conn.try_write(stamp_header(data.to_vec(), id, 0)).unwrap();
         }
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         let mut expected = Vec::new();
         for _ in 0..64 {
@@ -485,7 +485,7 @@ mod bite_tests {
             conn.try_write(stamp_header(set, id, 0)).unwrap();
         }
 
-        let response = get_read(&mut conn);
+        let response = get_read(&mut conn).unwrap();
 
         let mut expected = Vec::new();
         for _ in 0..max {
