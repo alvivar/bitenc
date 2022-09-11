@@ -37,7 +37,7 @@ fn main() {
             }
 
             Err(_) => {
-                println!("Reconnecting...");
+                println!("\nReconnecting...");
                 main();
             }
         }

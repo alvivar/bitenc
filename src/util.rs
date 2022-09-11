@@ -32,11 +32,10 @@ pub fn get_id(conn: &mut Connection) -> u32 {
 
 pub fn get_read(conn: &mut Connection) -> Option<Vec<u8>> {
     sleep(Duration::from_millis(250));
-    let response = conn.try_read();
 
-    match response {
+    match conn.try_read() {
         Ok(data) => {
-            println!("{:?}\n", data);
+            println!("\n{:?}", data);
             println!("{}", String::from_utf8_lossy(&data));
             sleep(Duration::from_millis(250));
 
