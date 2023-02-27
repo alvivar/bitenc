@@ -36,7 +36,7 @@ pub fn get_read(conn: &mut Connection) -> Option<Vec<u8>> {
     match conn.try_read() {
         Ok(data) => {
             println!("\n{:?}", data);
-            println!("{}", String::from_utf8_lossy(&data));
+            println!("\n{}", String::from_utf8_lossy(&data));
             sleep(Duration::from_millis(250));
 
             Some(data)
