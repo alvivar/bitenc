@@ -1,11 +1,11 @@
+use std::io::{stdin, stdout, Write};
+use std::net::TcpStream;
+
 mod connections;
 mod util;
 
 use crate::connections::Connection;
 use crate::util::{get_id, get_read, stamp_header};
-
-use std::io::{stdin, stdout, Write};
-use std::net::TcpStream;
 
 fn main() {
     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
@@ -52,6 +52,8 @@ mod bite_tests {
     use crate::util::{get_id, get_read, stamp_header};
 
     use std::net::TcpStream;
+    use std::thread::sleep;
+    use std::time::Duration;
 
     #[test]
     fn empty_message() {
@@ -500,5 +502,69 @@ mod bite_tests {
         }
 
         assert_eq!(response, expected);
+    }
+
+    #[test]
+    fn biggest_gets_256() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
+
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
+
+        let id = get_id(&mut conn);
+
+        let max = 256;
+
+        for i in 0..max {
+            let mut data = [0u8; 65535];
+            thread_rng().try_fill(&mut data[..]).unwrap();
+
+            let mut set = format!("s set.{} ", i).as_bytes().to_vec();
+            set.append(&mut data.to_vec());
+            set.truncate(65535 - 6);
+
+            conn.try_write(stamp_header(set, id, 0)).unwrap();
+        }
+
+        let response = get_read(&mut conn).unwrap();
+
+        let mut expected = Vec::new();
+        for _ in 0..max {
+            expected.extend_from_slice(&[0, id as u8, 0, 0, 0, 8, 79, 75]);
+        }
+
+        assert_eq!(response, expected);
+    }
+
+    #[test]
+    fn big_get() {
+        let server = TcpStream::connect("127.0.0.1:1984").unwrap();
+        server.set_nonblocking(true).unwrap();
+
+        let addr = server.local_addr().unwrap();
+        let mut conn = Connection::new(0, server, addr);
+
+        let id = get_id(&mut conn);
+
+        const SIZE: usize = 65535;
+
+        let mut data = [0u8; SIZE];
+        thread_rng().try_fill(&mut data[..]).unwrap();
+
+        let mut set = format!("s big ").as_bytes().to_vec();
+        set.append(&mut data.to_vec());
+        set.truncate(SIZE - 6);
+
+        sleep(Duration::from_millis(1000));
+
+        conn.try_write(stamp_header(set, id, 0)).unwrap();
+        conn.try_write(stamp_header(b"g big".to_vec(), id, 0))
+            .unwrap();
+
+        let response = get_read(&mut conn).unwrap();
+
+        println!("response.len {}", response.len());
+        assert_eq!(response.len(), SIZE + 2);
     }
 }
