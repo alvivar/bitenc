@@ -459,6 +459,7 @@ mod bite_tests {
             thread_rng().try_fill(&mut data[..]).unwrap();
 
             conn.try_write(stamp_header(data.to_vec(), id, 0)).unwrap();
+            sleep(Duration::from_millis(10));
         }
 
         let response = get_read(&mut conn).unwrap();
@@ -492,6 +493,7 @@ mod bite_tests {
             set.truncate(65535 - 6);
 
             conn.try_write(stamp_header(set, id, 0)).unwrap();
+            sleep(Duration::from_millis(10));
         }
 
         let response = get_read(&mut conn).unwrap();
@@ -525,6 +527,7 @@ mod bite_tests {
             set.truncate(65535 - 6);
 
             conn.try_write(stamp_header(set, id, 0)).unwrap();
+            sleep(Duration::from_millis(10));
         }
 
         let response = get_read(&mut conn).unwrap();
@@ -556,9 +559,8 @@ mod bite_tests {
         set.append(&mut data.to_vec());
         set.truncate(SIZE - 6);
 
-        sleep(Duration::from_millis(1000));
-
         conn.try_write(stamp_header(set, id, 0)).unwrap();
+        sleep(Duration::from_millis(10));
         conn.try_write(stamp_header(b"g big".to_vec(), id, 0))
             .unwrap();
 
