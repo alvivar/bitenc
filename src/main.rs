@@ -1,5 +1,7 @@
-use std::io::{stdin, stdout, Write};
-use std::net::TcpStream;
+use std::{
+    io::{stdin, stdout, Write},
+    net::TcpStream,
+};
 
 mod connections;
 mod util;
