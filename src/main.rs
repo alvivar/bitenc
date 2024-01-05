@@ -3,11 +3,11 @@ use std::{
     net::TcpStream,
 };
 
-mod connections;
-mod util;
-
-use crate::connections::Connection;
+use crate::connection::Connection;
 use crate::util::{get_id, get_read, stamp_header};
+
+mod connection;
+mod util;
 
 fn main() {
     let server = TcpStream::connect("127.0.0.1:1984").unwrap();
@@ -50,7 +50,7 @@ fn main() {
 mod bite_tests {
     use rand::{thread_rng, Rng};
 
-    use crate::connections::Connection;
+    use crate::connection::Connection;
     use crate::util::{get_id, get_read, stamp_header};
 
     use std::net::TcpStream;

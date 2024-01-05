@@ -1,6 +1,6 @@
 use std::{thread::sleep, time::Duration};
 
-use crate::connections::Connection;
+use crate::connection::Connection;
 
 fn get_header(from: u32, id: u32, size: u32) -> [u8; 6] {
     let byte0 = ((from & 0xFF00) >> 8) as u8;
